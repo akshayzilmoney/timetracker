@@ -198,6 +198,8 @@
   }
 
   /* --- XP message box --- */
+  /* Above every screen (login 950, dashboard 1400, day modal 1500) so dialogs
+     like the login screen's "Add User" prompt are never hidden behind them */
   .overlay {
     position: fixed;
     inset: 0;
@@ -205,7 +207,7 @@
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 100;
+    z-index: 2000;
   }
   .msgbox {
     width: 340px;
@@ -424,7 +426,7 @@
     border-radius: 8px;
     padding: 9px 12px;
     box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
-    z-index: 60;
+    z-index: 1600; /* visible above the dashboard too */
   }
   .balloon::after {
     content: "";
