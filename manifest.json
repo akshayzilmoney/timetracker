@@ -1,0 +1,13 @@
+{
+  "name": "Office Time Tracker",
+  "short_name": "TimeTracker",
+  "description": "Track your office hours, XP-style.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#3E8FD0",
+  "theme_color": "#245EDC",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

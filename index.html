@@ -1,0 +1,3976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#245EDC">
+<link rel="manifest" href="manifest.json">
+<title>Office Time Tracker</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Tahoma, "MS Sans Serif", Verdana, sans-serif;
+    font-size: 11px;
+    color: #000;
+    /* Bliss-style: blue sky fading into rolling green hills */
+    background: linear-gradient(180deg,
+      #1E5799 0%, #3E8FD0 30%, #7DB9E8 52%, #BFE0F5 60%,
+      #8FCB5B 66%, #4FA32E 82%, #2E7D1E 100%) fixed;
+    min-height: 100vh;
+  }
+
+  /* --- XP window chrome (fullscreen / maximized by default) --- */
+  .xp-window {
+    width: 100%;
+    min-height: calc(100vh - 30px); /* leave room for the taskbar */
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 30px;
+    background: #ECE9D8;
+  }
+  .xp-window .xp-body { flex: 1; }
+
+  /* Fullscreen: single centered column with margins on both sides */
+  .xp-body {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+  }
+  .xp-window.windowed .xp-body { max-width: none; }
+
+  /* --- profile strip --- */
+  .profile-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: linear-gradient(180deg, #7AA1E6 0%, #6375D6 100%);
+    border: 1px solid #5A7EDC;
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+  }
+  .avatar {
+    flex: none;
+    width: 42px; height: 42px;
+    border-radius: 6px;
+    border: 2px solid #fff;
+    background: linear-gradient(135deg, #FBB040, #e65512);
+    color: #fff;
+    font-weight: bold;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.35);
+  }
+  .profile-name {
+    font-weight: bold;
+    font-size: 13px;
+    color: #fff;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
+  }
+  .profile-sub { color: #D6DFF7; }
+
+  /* restored (small window) mode, toggled by the maximize button */
+  .xp-window.windowed {
+    min-height: 0;
+    max-width: 540px;
+    margin: 24px auto;
+    border: 1px solid #0831D9;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+  }
+  .xp-window.rolled { min-height: 0; }
+  .title-bar {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 4px 0 8px;
+    background: linear-gradient(180deg,
+      #0997FF 0%, #0053EE 8%, #0050EE 40%, #0066FF 88%, #003DD7 93%, #0031C1 100%);
+    color: #fff;
+    font-weight: bold;
+    font-size: 13px;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.6);
+    user-select: none;
+  }
+  .title-icon { margin-right: 6px; font-size: 14px; text-shadow: none; }
+  .title-text { flex: 1; white-space: nowrap; overflow: hidden; }
+  .title-buttons { display: flex; gap: 2px; }
+  .tbtn {
+    width: 21px; height: 21px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 3px;
+    border: 1px solid #fff;
+    background: linear-gradient(180deg, #7EB2F4 0%, #2A6BE0 50%, #1D53C7 100%);
+    font-size: 11px; font-weight: bold; color: #fff;
+    text-shadow: none;
+    cursor: pointer;
+  }
+  .tbtn:hover { filter: brightness(1.18); }
+  .tbtn:active { filter: brightness(0.85); }
+  .tbtn.close { background: linear-gradient(180deg, #F1A088 0%, #DA4E2C 45%, #B02B10 100%); }
+
+  .xp-window.windowed .title-bar,
+  .msgbox .title-bar { border-radius: 7px 7px 0 0; }
+
+  /* rolled up (minimized) window state */
+  .xp-window.rolled .menu-bar,
+  .xp-window.rolled .xp-body,
+  .xp-window.rolled .status-strip { display: none; }
+
+  .menu-bar {
+    background: #ECE9D8;
+    border-bottom: 1px solid #ACA899;
+    padding: 2px 4px;
+    user-select: none;
+  }
+  .menu-bar span { padding: 2px 7px; cursor: default; }
+  .menu-bar span:hover { background: #316AC5; color: #fff; }
+
+  .xp-body { padding: 14px; }
+
+  .subtitle { color: #000; margin-bottom: 10px; }
+
+  /* --- group boxes --- */
+  fieldset {
+    border: 1px solid #D0D0BF;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 12px;
+    background: #ECE9D8;
+  }
+  legend { color: #0046D5; padding: 0 4px; }
+
+  /* --- controls --- */
+  .drop-zone {
+    background: #fff;
+    border: 1px solid #7F9DB9;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  .drop-zone:hover, .drop-zone.dragover { background: #F3F7FB; }
+  .drop-zone p { color: #000; }
+  .drop-zone strong { color: #0046D5; text-decoration: underline; }
+
+  textarea {
+    width: 100%;
+    height: 80px;
+    background: #fff;
+    border: 1px solid #7F9DB9;
+    color: #000;
+    padding: 4px;
+    font-family: "Lucida Console", "Courier New", monospace;
+    font-size: 11px;
+    resize: vertical;
+    margin-bottom: 8px;
+  }
+  textarea:focus { outline: none; }
+
+  button {
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    color: #000;
+    min-width: 90px;
+    padding: 4px 14px;
+    border: 1px solid #003C74;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #ECEBE5 86%, #D8D0C4 100%);
+    cursor: pointer;
+  }
+  button:hover { box-shadow: inset 0 0 0 2px rgba(255,199,60,0.7); }
+  button:active { background: linear-gradient(180deg, #CDCAC3 0%, #E3E3DB 100%); }
+
+  #loadBtn { display: block; margin: 0 auto; }
+
+  #loadedBar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #loadedBar .ok { color: #008000; font-weight: bold; }
+
+  #punchOutBtn {
+    display: none;
+    margin: 0 auto 12px;
+    font-weight: bold;
+  }
+
+  /* --- XP message box --- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.15);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .msgbox {
+    width: 340px;
+    background: #ECE9D8;
+    border: 1px solid #0831D9;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+  }
+  .msg-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 16px;
+  }
+  .msg-icon {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #8B0000;
+    background: radial-gradient(circle at 32% 30%, #F16A55, #C21F0D);
+    color: #fff;
+    font-weight: bold;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .msg-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 0 14px;
+  }
+  /* blue question icon for confirmations */
+  .msg-icon.q {
+    border-color: #1A3E8C;
+    background: radial-gradient(circle at 32% 30%, #7EB2F4, #1D53C7);
+  }
+
+  #result { display: none; }
+
+  .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border: 1px solid #ACA899;
+    background: #fff;
+    box-shadow: inset 1px 1px 0 #808080;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  .status-working { color: #008000; }
+  .status-out { color: #806000; }
+  .status-done { color: #0046D5; }
+
+  .leave-box {
+    text-align: center;
+    background: #fff;
+    border: 1px solid #7F9DB9;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+  .leave-label { color: #000; margin-bottom: 4px; }
+  .leave-time {
+    font-family: "Courier New", monospace;
+    font-size: 36px;
+    font-weight: bold;
+    color: #003399;
+  }
+  .leave-time.done { color: #008000; }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .stat {
+    background: #fff;
+    border: 1px solid #7F9DB9;
+    padding: 6px;
+    text-align: center;
+  }
+  .stat .label { color: #555; }
+  .stat .value { font-size: 13px; font-weight: bold; margin-top: 2px; }
+
+  .progress-wrap { margin-bottom: 10px; }
+  .progress-bar {
+    height: 16px;
+    background: #fff;
+    border: 1px solid #7F9DB9;
+    padding: 1px;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    transition: width .5s;
+    background:
+      repeating-linear-gradient(90deg,
+        transparent 0px, transparent 6px, #ECE9D8 6px, #ECE9D8 8px),
+      linear-gradient(180deg, #ACE97C 0%, #2FB833 50%, #77D766 100%);
+  }
+  .progress-text { text-align: right; color: #555; margin-top: 3px; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #7F9DB9; }
+  th {
+    text-align: left;
+    font-weight: normal;
+    color: #000;
+    padding: 3px 6px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F7F7F1 80%, #DEDBCE 100%);
+    border-right: 1px solid #D9D9D9;
+    border-bottom: 1px solid #ACA899;
+  }
+  td { padding: 3px 6px; border-right: 1px solid #EDEDED; border-bottom: 1px solid #EDEDED; }
+  .ongoing { color: #008000; font-weight: bold; }
+
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .month-nav h2 { font-size: 12px; font-weight: bold; }
+  .month-nav button { min-width: 24px; width: 24px; padding: 2px 0; }
+  .pos { color: #008000; }
+  .neg { color: #C00000; }
+  .muted { color: #555; text-align: center; padding: 10px 0; }
+  .day-today { color: #0046D5; font-weight: bold; }
+
+  .status-strip {
+    border-top: 1px solid #ACA899;
+    background: #ECE9D8;
+    padding: 3px 8px;
+    color: #444;
+    box-shadow: inset 1px 1px 0 #fff;
+  }
+
+  /* --- desktop icons --- */
+  .desktop-icons {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    z-index: 1;
+    user-select: none;
+  }
+  .dicon { width: 80px; text-align: center; cursor: pointer; }
+  .di-img { font-size: 32px; filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.5)); }
+  .di-label {
+    margin-top: 3px;
+    color: #fff;
+    text-shadow: 1px 1px 2px #000;
+    padding: 1px 3px;
+  }
+  .dicon.selected .di-label { background: #316AC5; }
+  .xp-window { position: relative; z-index: 2; }
+
+  /* --- XP taskbar --- */
+  .taskbar {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: 30px;
+    display: flex;
+    align-items: stretch;
+    background: linear-gradient(180deg, #3993E4 0%, #245EDC 8%, #2159D6 60%, #1941A5 100%);
+    z-index: 50;
+  }
+  .start-btn {
+    display: flex; align-items: center;
+    padding: 0 20px 0 10px;
+    background: linear-gradient(180deg, #8ECB60 0%, #3C8D0D 55%, #2F6B0A 100%);
+    border-radius: 0 14px 14px 0;
+    color: #fff;
+    font-style: italic;
+    font-weight: bold;
+    font-size: 15px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    box-shadow: inset -3px -4px 8px rgba(0,0,0,0.3);
+    cursor: pointer;
+    user-select: none;
+  }
+  .start-btn:active { filter: brightness(0.85); }
+  .task-item {
+    display: flex; align-items: center;
+    margin: 4px 0 4px 10px;
+    padding: 0 14px;
+    background: linear-gradient(180deg, #3C81F3 0%, #1E5CD7 100%);
+    border-radius: 3px;
+    color: #fff;
+    box-shadow: inset 1px 1px 1px rgba(255,255,255,0.35);
+    user-select: none;
+  }
+  .tray {
+    margin-left: auto;
+    display: flex; align-items: center;
+    padding: 0 14px 0 18px;
+    background: linear-gradient(180deg, #0F8BE0 0%, #19A2FA 50%, #0F7BD0 100%);
+    border-left: 1px solid #092E51;
+    box-shadow: inset 2px 0 3px rgba(0,0,0,0.25);
+    color: #fff;
+    font-size: 12px;
+  }
+
+  /* --- XP balloon tip --- */
+  .balloon {
+    display: none;
+    position: fixed;
+    right: 14px;
+    bottom: 48px;
+    max-width: 280px;
+    background: #FFFFE1;
+    border: 1px solid #000;
+    border-radius: 8px;
+    padding: 9px 12px;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+    z-index: 60;
+  }
+  .balloon::after {
+    content: "";
+    position: absolute;
+    bottom: -13px;
+    right: 34px;
+    border: 8px solid transparent;
+    border-top: 14px solid #FFFFE1;
+    border-right-width: 4px;
+  }
+  .b-title { font-weight: bold; margin-bottom: 4px; padding-right: 16px; }
+  .b-close { position: absolute; top: 5px; right: 8px; cursor: pointer; font-weight: bold; }
+
+  /* --- boot splash --- */
+  #bootScreen {
+    position: fixed; inset: 0;
+    background: #000;
+    z-index: 1000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 52px;
+    transition: opacity .6s;
+  }
+  .boot-title {
+    color: #fff;
+    font-size: 30px;
+    font-family: "Franklin Gothic Medium", "Trebuchet MS", Tahoma, sans-serif;
+  }
+  .boot-title span { color: #F7941D; font-weight: bold; }
+  .boot-bar {
+    width: 176px; height: 18px;
+    border: 2px solid #B0B0B0;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+  }
+  .boot-blocks {
+    position: absolute;
+    top: 2px; bottom: 2px; left: 0;
+    width: 38px;
+    display: flex; gap: 3px;
+    animation: bootSlide 1.6s linear infinite;
+  }
+  .boot-blocks i {
+    flex: 1;
+    background: linear-gradient(180deg, #7DA9E8 0%, #2E5CB8 60%, #1D3F8F 100%);
+    border-radius: 2px;
+  }
+  @keyframes bootSlide {
+    from { transform: translateX(-44px); }
+    to   { transform: translateX(184px); }
+  }
+
+  .stats.two { grid-template-columns: 1fr 1fr; }
+
+  #msgText { white-space: pre-line; }
+
+  /* --- dragging --- */
+  .xp-window.dragged { position: fixed; margin: 0; width: 540px; max-width: 92vw; z-index: 5; }
+  .title-bar { cursor: default; }
+
+  /* --- start menu --- */
+  #startMenu {
+    display: none;
+    position: fixed;
+    left: 0; bottom: 30px;
+    width: 250px;
+    background: #ECE9D8;
+    border: 2px solid #0831D9;
+    border-radius: 6px 6px 0 0;
+    box-shadow: 3px -3px 10px rgba(0,0,0,0.4);
+    z-index: 70;
+    overflow: hidden;
+  }
+  .sm-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px;
+    background: linear-gradient(180deg, #1B65CB 0%, #0A50B6 100%);
+    color: #fff; font-weight: bold; font-size: 13px;
+  }
+  .sm-head .avatar { width: 34px; height: 34px; font-size: 16px; }
+  .sm-items { background: #fff; padding: 4px 0; }
+  .sm-item { padding: 7px 14px; cursor: pointer; }
+  .sm-item:hover { background: #316AC5; color: #fff; }
+  .sm-sep { height: 1px; background: #D0D0BF; margin: 4px 8px; }
+
+  /* --- Clippy --- */
+  #clippy {
+    display: none;
+    position: fixed;
+    left: 18px; bottom: 44px;
+    z-index: 55;
+    width: 230px;
+  }
+  .clip-bubble {
+    background: #FFFFCC;
+    border: 1px solid #000;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    position: relative;
+    cursor: pointer;
+  }
+  .clip-bubble::after {
+    content: "";
+    position: absolute;
+    bottom: -12px; left: 26px;
+    border: 7px solid transparent;
+    border-top: 12px solid #FFFFCC;
+  }
+  .clip-char {
+    font-size: 42px;
+    margin-left: 8px;
+    filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.4));
+    cursor: pointer;
+    display: inline-block;
+  }
+
+  /* --- MSN toast --- */
+  #msnToast {
+    display: none;
+    position: fixed;
+    right: 14px; bottom: 44px;
+    width: 230px;
+    background: linear-gradient(180deg, #EBF3FB, #CFE1F5);
+    border: 1px solid #5A7EDC;
+    border-radius: 4px;
+    padding: 8px 24px 8px 10px;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.4);
+    z-index: 58;
+  }
+  #msnToast .m-close { position: absolute; top: 3px; right: 7px; cursor: pointer; font-weight: bold; color: #444; }
+  #msnToast .m-from { font-weight: bold; color: #1B65CB; margin-bottom: 3px; }
+  .nudge { animation: nudgeShake 0.5s linear 2; }
+  @keyframes nudgeShake {
+    0%,100% { transform: translate(0,0); }
+    20% { transform: translate(-4px,3px); }
+    40% { transform: translate(4px,-3px); }
+    60% { transform: translate(-3px,-2px); }
+    80% { transform: translate(3px,2px); }
+  }
+
+  /* --- screensaver --- */
+  #screensaver {
+    display: none;
+    position: fixed; inset: 0;
+    background: #000;
+    z-index: 900;
+    cursor: none;
+    overflow: hidden;
+  }
+  /* --- shutdown / BSOD / login --- */
+  #shutdownScreen {
+    display: none;
+    position: fixed; inset: 0;
+    background: #000;
+    z-index: 1100;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 18px;
+  }
+  #shutdownScreen .sd-text {
+    color: #F7941D;
+    font-size: 26px;
+    font-family: "Franklin Gothic Medium", Tahoma, sans-serif;
+    text-align: center;
+  }
+  #shutdownScreen .sd-hint { color: #555; }
+
+  #bsod {
+    display: none;
+    position: fixed; inset: 0;
+    background: #0000AA;
+    color: #fff;
+    font-family: "Lucida Console", monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    padding: 60px 70px;
+    z-index: 1200;
+    white-space: pre-wrap;
+  }
+
+  #loginScreen {
+    display: flex;
+    position: fixed; inset: 0;
+    background: linear-gradient(180deg, #5A7EDC 0%, #3B6EA5 55%, #2C5788 100%);
+    z-index: 950;
+    align-items: center;
+    justify-content: center;
+    gap: 60px;
+    transition: opacity .6s;
+  }
+  .login-left {
+    color: #fff;
+    font-size: 22px;
+    border-right: 1px solid rgba(255,255,255,0.4);
+    padding-right: 60px;
+  }
+  .login-acct {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #fff;
+  }
+  .login-acct:hover { background: rgba(255,255,255,0.15); }
+  .login-acct .avatar { width: 56px; height: 56px; font-size: 26px; }
+  .login-acct .la-name { font-size: 18px; font-weight: bold; }
+  .login-acct .la-sub { color: #CFE1F5; }
+
+  /* --- Minesweeper --- */
+  #mineWindow {
+    display: none;
+    position: fixed;
+    top: 90px; left: 50%;
+    transform: translateX(-50%);
+    background: #ECE9D8;
+    border: 1px solid #0831D9;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+    z-index: 80;
+  }
+  #mineWindow .title-bar { border-radius: 7px 7px 0 0; }
+  .mine-body { padding: 8px; }
+  .mine-status {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #C0C0C0;
+    border: 2px inset #fff;
+    padding: 4px 8px;
+    margin-bottom: 6px;
+  }
+  .mine-face { cursor: pointer; font-size: 19px; }
+  .mine-count {
+    color: #F00; background: #000;
+    padding: 1px 5px;
+    font-family: "Courier New", monospace;
+    font-weight: bold;
+    font-size: 14px;
+  }
+  .mine-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 24px);
+    border: 2px inset #fff;
+    width: max-content;
+    background: #C0C0C0;
+  }
+  .mcell {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px outset #fff;
+    background: #C0C0C0;
+    font-weight: bold;
+    font-size: 13px;
+    user-select: none;
+  }
+  .mcell.open { border: 1px solid #808080; border-width: 0 1px 1px 0; }
+  .mc1{color:#00F}.mc2{color:#008000}.mc3{color:#F00}.mc4{color:#000080}
+  .mc5{color:#800000}.mc6{color:#008080}.mc7{color:#000}.mc8{color:#808080}
+
+  /* --- solitaire cards --- */
+  .cards-canvas { position: fixed; inset: 0; z-index: 45; pointer-events: none; }
+
+  /* --- virus prank dialogs --- */
+  .verr {
+    position: fixed;
+    width: 280px;
+    background: #ECE9D8;
+    border: 1px solid #0831D9;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+    z-index: 95;
+  }
+  .verr .title-bar { border-radius: 7px 7px 0 0; }
+  .verr-body { display: flex; gap: 10px; align-items: center; padding: 12px; }
+  .verr-actions { text-align: center; padding: 0 0 10px; }
+
+  /* --- millionth visitor banner --- */
+  #visitorBanner {
+    display: none;
+    position: fixed;
+    z-index: 65;
+    width: 320px;
+    padding: 16px 12px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 13px;
+    color: #FF0;
+    cursor: pointer;
+    border: 4px dashed #FF0;
+    box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+    animation: bannerFlash .6s steps(2) infinite;
+  }
+  @keyframes bannerFlash {
+    0%, 100% { background: #F00; }
+    50% { background: #00F; }
+  }
+
+  /* --- fake toolbars --- */
+  .fake-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #ECE9D8;
+    border-bottom: 1px solid #ACA899;
+    padding: 3px 6px;
+  }
+  .fake-toolbar input { border: 1px solid #7F9DB9; padding: 2px 4px; width: 130px; font-size: 11px; }
+  .fake-toolbar button { min-width: 0; padding: 2px 8px; }
+  .fake-toolbar .tb-x { margin-left: auto; cursor: pointer; font-weight: bold; }
+
+  /* --- glitch effect --- */
+  .glitched { animation: glitchAnim .45s steps(4); }
+  @keyframes glitchAnim {
+    0%   { filter: none; transform: none; }
+    25%  { filter: invert(1) hue-rotate(90deg); transform: translate(3px,-2px) skewX(2deg); }
+    50%  { filter: hue-rotate(270deg) saturate(4); transform: translate(-4px,1px); }
+    75%  { filter: invert(1); transform: translate(2px,2px) skewX(-3deg); }
+    100% { filter: none; transform: none; }
+  }
+
+  /* --- desktop pet + goose --- */
+  #pet {
+    display: none;
+    position: fixed;
+    bottom: 32px;
+    left: 200px;
+    font-size: 34px;
+    z-index: 52;
+    cursor: pointer;
+    filter: hue-rotate(270deg) saturate(1.6) drop-shadow(1px 2px 2px rgba(0,0,0,0.4));
+  }
+  #petBubble {
+    display: none;
+    position: fixed;
+    z-index: 53;
+    background: #FFFFCC;
+    border: 1px solid #000;
+    border-radius: 8px;
+    padding: 6px 9px;
+    max-width: 200px;
+  }
+  #goose {
+    display: none;
+    position: fixed;
+    bottom: 1px;
+    left: -60px;
+    font-size: 30px;
+    z-index: 52;
+    filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.4));
+    transform: scaleX(-1);
+  }
+  #gooseNote {
+    display: none;
+    position: fixed;
+    z-index: 53;
+    background: #FEF9B0;
+    border: 1px solid #C8B900;
+    padding: 16px 12px;
+    width: 150px;
+    font-family: "Comic Sans MS", cursive, Tahoma;
+    transform: rotate(-4deg);
+    box-shadow: 2px 3px 8px rgba(0,0,0,0.35);
+    cursor: pointer;
+  }
+
+  /* --- mini game windows --- */
+  .mini-win {
+    display: none;
+    position: fixed;
+    top: 80px; left: 50%;
+    transform: translateX(-50%);
+    background: #ECE9D8;
+    border: 1px solid #0831D9;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+    z-index: 82;
+  }
+  .mini-win .title-bar { border-radius: 7px 7px 0 0; }
+  .mini-win canvas { display: block; margin: 8px; background: #000; }
+
+  /* --- boss key screen --- */
+  #bossScreen {
+    display: none;
+    position: fixed; inset: 0;
+    z-index: 1300;
+    background: #fff;
+    overflow: hidden;
+  }
+  .boss-title {
+    background: linear-gradient(180deg, #0997FF, #0053EE);
+    color: #fff;
+    font-weight: bold;
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+  .boss-menu { background: #ECE9D8; border-bottom: 1px solid #ACA899; padding: 3px 6px; }
+  .boss-menu span { padding: 2px 8px; }
+  .boss-formula { display: flex; gap: 6px; padding: 3px 6px; border-bottom: 1px solid #ACA899; background: #ECE9D8; }
+  .boss-formula .cellref { border: 1px inset #fff; background: #fff; padding: 1px 8px; width: 60px; }
+  .boss-formula .fx { flex: 1; border: 1px inset #fff; background: #fff; padding: 1px 8px; color: #555; }
+  #bossGrid { border-collapse: collapse; width: 100%; font-size: 11px; }
+  #bossGrid th { background: #ECE9D8; border: 1px solid #ACA899; font-weight: normal; padding: 2px 4px; text-align: center; }
+  #bossGrid td { border: 1px solid #D4D0C8; padding: 2px 6px; text-align: right; }
+
+  /* --- dial-up window --- */
+  #dialup {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 300px;
+    background: #ECE9D8;
+    border: 1px solid #0831D9;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+    z-index: 960;
+  }
+  #dialup .title-bar { border-radius: 7px 7px 0 0; }
+  .dial-body { padding: 16px; display: flex; align-items: center; gap: 12px; }
+  .dial-body .phone { font-size: 30px; animation: dialShake 1s linear infinite; }
+  @keyframes dialShake {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-12deg); }
+    75% { transform: rotate(12deg); }
+  }
+
+  /* --- CD loot --- */
+  #lootWin {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 260px;
+    background: #ECE9D8;
+    border: 1px solid #0831D9;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+    z-index: 85;
+    text-align: center;
+  }
+  #lootWin .title-bar { border-radius: 7px 7px 0 0; }
+  .loot-body { padding: 18px; }
+  #lootCd { font-size: 52px; display: inline-block; cursor: pointer; animation: cdSpin 1.2s linear infinite; }
+  @keyframes cdSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  #lootResult { margin-top: 10px; font-weight: bold; display: none; }
+
+  /* --- prestige --- */
+  .avatar { position: relative; }
+  .avatar .star { position: absolute; top: -9px; right: -9px; font-size: 13px; }
+  #prestigeBtn { display: none; margin-top: 4px; min-width: 0; padding: 2px 8px; font-size: 10px; }
+
+  /* --- pipes screensaver canvas --- */
+  #ssPipes { display: block; }
+
+  /* --- profile XP bar --- */
+  .xp-wrap { flex: 1; margin-left: 8px; }
+  .xp-level { color: #D6DFF7; margin-bottom: 3px; }
+  .xp-bar {
+    height: 8px;
+    background: rgba(255,255,255,0.35);
+    border: 1px solid #fff;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  #xpFill { height: 100%; width: 0%; background: linear-gradient(180deg, #ACE97C, #2FB833); }
+
+  /* --- panel windows (settings, winamp, msn, defrag, achievements) --- */
+  .mini-win .panel-body { padding: 10px; width: 300px; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .set-row input[type="text"], .set-row input[type="number"] { border: 1px solid #7F9DB9; padding: 3px; width: 130px; }
+  .set-actions { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+  .ach-grid { display: grid; grid-template-columns: 1fr; gap: 6px; max-height: 340px; overflow: auto; width: 320px; }
+  .badge { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid #7F9DB9; padding: 6px 8px; }
+  .badge.locked { filter: grayscale(1); opacity: 0.55; }
+  .badge-ico { font-size: 24px; }
+  .badge-sub { color: #555; }
+  .wa-display { background: #000; color: #3BD54A; font-family: "Lucida Console", monospace; font-size: 11px; padding: 6px 8px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; }
+  .wa-list { background: #fff; border: 1px solid #7F9DB9; max-height: 160px; overflow: auto; }
+  .wa-item { padding: 4px 8px; cursor: pointer; }
+  .wa-item:hover { background: #316AC5; color: #fff; }
+  .wa-item.playing { font-weight: bold; color: #008000; }
+  .msn-me { font-weight: bold; margin-bottom: 6px; }
+  .df-grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 1px; background: #fff; border: 1px solid #7F9DB9; padding: 2px; }
+  .df-grid i { display: block; height: 10px; }
+  .df-status { margin-top: 6px; color: #444; }
+
+  /* --- monthly chart + notes --- */
+  #monthChart { width: 100%; height: 90px; background: #fff; border: 1px solid #7F9DB9; margin-bottom: 8px; display: block; }
+  .notecell { cursor: pointer; text-align: center; }
+  .mrow { cursor: grab; }
+
+  /* --- minesweeper difficulty --- */
+  .mine-diff { display: flex; gap: 4px; margin-bottom: 6px; }
+  .mine-diff button { min-width: 0; padding: 2px 8px; font-size: 10px; }
+  .mine-diff button.active { background: #FFE7A2; }
+
+  /* --- multi-user login --- */
+  #loginAccts { display: flex; flex-direction: column; gap: 6px; max-height: 72vh; overflow: auto; }
+
+  /* --- prompt input in msgbox --- */
+  #msgInputWrap { padding: 0 16px 12px; display: none; }
+  #msgInput { width: 100%; border: 1px solid #7F9DB9; padding: 3px; font-family: Tahoma, sans-serif; font-size: 11px; }
+
+  /* --- UX polish: taskbar buttons, animations, month nav --- */
+  .task-open { display: flex; overflow: hidden; }
+  .task-item.task-btn { cursor: pointer; white-space: nowrap; }
+  .task-item.task-btn:hover { filter: brightness(1.12); }
+  .task-btn.min {
+    background: linear-gradient(180deg, #1E5CD7 0%, #1941A5 100%);
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.4);
+  }
+  .mini-win, #mineWindow, #lootWin { animation: winFade .15s ease-out; }
+  @keyframes winFade { from { opacity: 0; } to { opacity: 1; } }
+  .balloon { animation: balloonIn .2s ease-out; }
+  @keyframes balloonIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .month-nav #todayMonth { width: auto; min-width: 0; padding: 2px 8px; }
+  #result.flash fieldset { animation: resultFlash 1.2s ease-out; }
+  @keyframes resultFlash { 0% { box-shadow: 0 0 0 3px #FFC73C; } 100% { box-shadow: none; } }
+  #dialup { cursor: pointer; }
+  .dial-skip { color: #555; margin-top: 6px; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
+
+  /* --- modern history dashboard (deliberately not XP-themed) --- */
+  #dashboard {
+    display: none;
+    position: fixed; inset: 0;
+    z-index: 1400;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    overflow-y: auto;
+    animation: dashIn .2s ease-out;
+  }
+  @keyframes dashIn { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+  .dash-head {
+    position: sticky; top: 0;
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 24px;
+    background: rgba(15,23,42,0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid #1e293b;
+    z-index: 2;
+  }
+  .dash-head h1 { font-size: 18px; font-weight: 600; flex: 1; margin: 0; }
+  #dashBack {
+    min-width: 0;
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #dashBack:hover { background: #334155; box-shadow: none; }
+  #dashBack:active { background: #0f172a; }
+  #dashSearch {
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    width: 220px;
+    outline: none;
+  }
+  #dashSearch::placeholder { color: #64748b; }
+  #dashSearch:focus { border-color: #38bdf8; }
+  .dash-body { max-width: 1000px; margin: 0 auto; padding: 20px 24px 60px; }
+  .dash-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .dash-card {
+    background: #1e293b;
+    border: 1px solid #293548;
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .dash-card .dc-label { color: #94a3b8; font-size: 12px; margin-bottom: 6px; }
+  .dash-card .dc-value { font-size: 20px; font-weight: 600; }
+  .dash-card .dc-sub { color: #64748b; font-size: 11px; margin-top: 3px; }
+  .dash-panel {
+    background: #1e293b;
+    border: 1px solid #293548;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+  .dash-panel h2 { font-size: 13px; font-weight: 600; color: #94a3b8; margin: 0 0 14px; text-transform: uppercase; letter-spacing: .05em; }
+  .dash-bars { display: flex; align-items: flex-end; gap: 8px; height: 180px; }
+  .db-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; min-width: 0; }
+  .db-val { font-size: 11px; color: #94a3b8; }
+  .db-bar { width: 100%; max-width: 38px; background: linear-gradient(180deg, #38bdf8, #0284c7); border-radius: 6px 6px 2px 2px; }
+  .db-col.now .db-bar { background: linear-gradient(180deg, #34d399, #059669); }
+  .db-lab { font-size: 11px; color: #64748b; }
+  .dash-heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px); gap: 3px; overflow-x: auto; padding-bottom: 4px; }
+  .dash-heat i, .heat-legend i { width: 12px; height: 12px; border-radius: 3px; background: #293548; display: inline-block; flex: none; }
+  .hl1 { background: #14532d !important; }
+  .hl2 { background: #15803d !important; }
+  .hl3 { background: #22c55e !important; }
+  .hl4 { background: #86efac !important; }
+  .heat-legend { display: flex; align-items: center; gap: 5px; margin-top: 10px; color: #64748b; font-size: 11px; }
+  #dashTable h3 { font-size: 13px; font-weight: 600; margin: 18px 0 8px; color: #e2e8f0; }
+  #dashTable h3 span { color: #64748b; font-weight: 400; }
+  #dashTable table { width: 100%; border-collapse: collapse; background: transparent; border: none; }
+  #dashTable th {
+    background: none; border: none; border-bottom: 1px solid #293548;
+    color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    padding: 6px 8px; text-align: left;
+  }
+  #dashTable td { border: none; border-bottom: 1px solid #22304a; padding: 7px 8px; font-size: 13px; }
+  #dashTable tr:hover td { background: #223049; }
+  #dashboard .pos { color: #34d399; }
+  #dashboard .neg { color: #f87171; }
+  #dashTable .db-note { color: #94a3b8; font-style: italic; }
+  #dashTable .db-today td:first-child { color: #38bdf8; font-weight: 600; }
+  .db-empty { color: #64748b; text-align: center; padding: 30px 0; }
+  .month-nav #todayMonth, .month-nav #openDash { width: auto; min-width: 0; padding: 2px 8px; }
+  @media (max-width: 640px) {
+    .dash-head { padding: 10px 12px; flex-wrap: wrap; gap: 10px; }
+    #dashSearch { width: 100%; order: 3; }
+    .dash-body { padding: 14px 12px 40px; }
+    .dash-bars { height: 130px; }
+    .db-val { display: none; }
+  }
+
+  /* --- mobile / touch --- */
+  @media (max-width: 640px) {
+    .desktop-icons { position: static; flex-direction: row; flex-wrap: wrap; gap: 8px; padding: 8px; }
+    .dicon { width: 64px; }
+    .xp-window.windowed { max-width: none; margin: 8px; }
+    .stats, .stats.two { grid-template-columns: 1fr 1fr; }
+    #pet, #goose { display: none !important; }
+    .login-left { border-right: none; padding-right: 0; font-size: 16px; }
+    #loginScreen { flex-direction: column; gap: 24px; }
+    .mini-win, #mineWindow { max-width: 96vw; overflow: auto; }
+    .leave-time { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="desktop-icons">
+  <div class="dicon" data-action="bsod">
+    <div class="di-img">&#128421;&#65039;</div>
+    <div class="di-label">My Computer</div>
+  </div>
+  <div class="dicon" data-action="dashboard">
+    <div class="di-img">&#128200;</div>
+    <div class="di-label">My History</div>
+  </div>
+  <div class="dicon" data-action="minesweeper">
+    <div class="di-img">&#128163;</div>
+    <div class="di-label">Minesweeper</div>
+  </div>
+  <div class="dicon" data-msg="C:\Documents and Settings\Akshay\My Documents is not accessible. Access is denied.">
+    <div class="di-img">&#128193;</div>
+    <div class="di-label">My Documents</div>
+  </div>
+  <div class="dicon" data-msg="Internet Explorer cannot display the webpage.">
+    <div class="di-img">&#127760;</div>
+    <div class="di-label">Internet Explorer</div>
+  </div>
+  <div class="dicon" data-action="clear-history">
+    <div class="di-img">&#128465;&#65039;</div>
+    <div class="di-label">Recycle Bin</div>
+  </div>
+  <div class="dicon" data-action="virus">
+    <div class="di-img">&#128190;</div>
+    <div class="di-label">FREE_SCREENSAVERS.exe</div>
+  </div>
+</div>
+
+<div class="xp-window windowed">
+  <div class="title-bar">
+    <span class="title-icon">&#128336;</span>
+    <span class="title-text">Office Time Tracker</span>
+    <span class="title-buttons">
+      <span class="tbtn" id="btnMin" title="Roll up">&#95;</span><span class="tbtn" id="btnMax" title="Maximize">&#9633;</span><span class="tbtn close" id="btnClose" title="Close">&#10005;</span>
+    </span>
+  </div>
+  <div class="menu-bar"><span>File</span><span>View</span><span>Help</span></div>
+
+  <div class="xp-body">
+  <p class="subtitle" id="subtitle">Target: 8 working hours. Load your punch JSON to see when you can leave.</p>
+
+  <div class="profile-strip">
+    <div class="avatar" id="profileAvatar"><span id="avatarLetter">A</span></div>
+    <div>
+      <div class="profile-name" id="profileName">Akshay</div>
+      <div class="profile-sub">Logged in</div>
+    </div>
+    <div class="xp-wrap">
+      <div class="xp-level" id="xpLevel">Level 1 &#8212; Intern</div>
+      <div class="xp-bar"><div id="xpFill"></div></div>
+      <button id="prestigeBtn">&#11088; Prestige</button>
+    </div>
+  </div>
+
+  <fieldset>
+    <legend>Punch Data</legend>
+    <div id="inputArea">
+      <div class="drop-zone" id="dropZone">
+        <p><strong>Browse for a JSON file...</strong> or drag &amp; drop it here</p>
+        <input type="file" id="fileInput" accept=".json,application/json" hidden>
+      </div>
+
+      <textarea id="jsonInput" placeholder='...or paste the JSON here (loads automatically)'></textarea>
+      <button id="loadBtn">Calculate My Leave Time</button>
+    </div>
+    <div id="loadedBar">
+      <span class="ok">&#10004; Punch data loaded.</span>
+      <button id="newDataBtn">Load New Data</button>
+    </div>
+  </fieldset>
+
+  <div id="result">
+    <fieldset>
+    <legend>Today</legend>
+    <span class="status-badge" id="statusBadge"></span>
+
+    <div class="leave-box">
+      <div class="leave-label" id="leaveLabel">You can leave at</div>
+      <div class="leave-time" id="leaveTime">--:--</div>
+    </div>
+
+    <button id="punchOutBtn">Punch Out Now</button>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Worked</div>
+        <div class="value" id="workedVal">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Remaining</div>
+        <div class="value" id="remainingVal">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Breaks</div>
+        <div class="value" id="breakVal">-</div>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">0%</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>#</th><th>Punch In</th><th>Punch Out</th><th>Duration</th></tr>
+      </thead>
+      <tbody id="sessionsBody"></tbody>
+    </table>
+    </fieldset>
+  </div>
+
+  <fieldset>
+    <legend>This Week</legend>
+    <div class="stats two">
+      <div class="stat">
+        <div class="label">Worked</div>
+        <div class="value" id="wTotalVal">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Net +/-</div>
+        <div class="value" id="wNetVal">-</div>
+      </div>
+    </div>
+  </fieldset>
+
+  <div id="monthly">
+    <fieldset>
+    <legend>Monthly History</legend>
+    <div class="month-nav">
+      <button id="prevMonth" title="Previous month">&#8249;</button>
+      <h2 id="monthTitle"></h2>
+      <span>
+        <button id="openDash" title="Open full history dashboard">&#128200;</button>
+        <button id="todayMonth" title="Jump to current month">Today</button>
+        <button id="nextMonth" title="Next month">&#8250;</button>
+      </span>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Total Worked</div>
+        <div class="value" id="mTotalVal">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Avg / Day</div>
+        <div class="value" id="mAvgVal">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Net +/-</div>
+        <div class="value" id="mNetVal">-</div>
+      </div>
+    </div>
+
+    <canvas id="monthChart" height="90"></canvas>
+
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Worked</th><th>Breaks</th><th>+/-</th><th>&#9998;</th></tr>
+      </thead>
+      <tbody id="monthBody"></tbody>
+    </table>
+    <div class="muted" style="padding:4px 0 0">Tip: click &#9998; on a row to add a note.</div>
+    <div class="muted" id="monthEmpty" style="display:none">No recorded days this month.</div>
+    </fieldset>
+  </div>
+  </div>
+
+  <div class="status-strip" id="statusStrip">Ready</div>
+</div>
+
+<div class="overlay" id="msgOverlay">
+  <div class="msgbox">
+    <div class="title-bar">
+      <span class="title-text">Office Time Tracker</span>
+      <span class="title-buttons"><span class="tbtn close" id="msgX">&#10005;</span></span>
+    </div>
+    <div class="msg-body">
+      <span class="msg-icon" id="msgIcon">&#10005;</span>
+      <span id="msgText"></span>
+    </div>
+    <div id="msgInputWrap"><input id="msgInput" type="text" maxlength="120"></div>
+    <div class="msg-actions">
+      <button id="msgOk">OK</button>
+      <button id="msgYes" style="display:none">Yes</button>
+      <button id="msgNo" style="display:none">No</button>
+    </div>
+  </div>
+</div>
+
+<div class="balloon" id="balloon">
+  <span class="b-close" id="balloonClose">&#10005;</span>
+  <div class="b-title">&#9200; Office Time Tracker</div>
+  <div id="balloonText"></div>
+</div>
+
+<div class="taskbar">
+  <div class="start-btn">start</div>
+  <div class="task-item">&#128336; Office Time Tracker</div>
+  <div class="task-open" id="taskOpen"></div>
+  <div class="tray"><span id="trayClock">--:--</span></div>
+</div>
+
+<div id="startMenu">
+  <div class="sm-head"><div class="avatar" id="smAvatar">A</div><span id="smUser">Akshay</span></div>
+  <div class="sm-items">
+    <div class="sm-item" id="smHours">&#128202; My Work Hours</div>
+    <div class="sm-item" id="smTrophies">&#127942; Achievements</div>
+    <div class="sm-item" id="smScores">&#129351; High Scores</div>
+    <div class="sm-item" id="smMine">&#128163; Minesweeper</div>
+    <div class="sm-item" id="smPinball">&#127921; Pinball</div>
+    <div class="sm-item" id="smWinamp">&#127925; Winamp</div>
+    <div class="sm-item" id="smMsn">&#128172; MSN Messenger</div>
+    <div class="sm-item" id="smDefrag">&#128451;&#65039; Disk Defragmenter</div>
+    <div class="sm-item" id="smCds">&#128191; My CD Collection</div>
+    <div class="sm-item" id="smRun">&#9654; Run...</div>
+    <div class="sm-sep"></div>
+    <div class="sm-item" id="smSettings">&#9881;&#65039; Control Panel</div>
+    <div class="sm-item" id="smExport">&#128196; Export History (CSV)</div>
+    <div class="sm-item" id="smBackup">&#128190; Backup All Data</div>
+    <div class="sm-item" id="smRestore">&#128194; Restore Backup</div>
+    <div class="sm-sep"></div>
+    <div class="sm-item" id="smLogoff">&#128100; Log Off</div>
+    <div class="sm-item" id="smShut">&#9211; Turn Off Computer</div>
+  </div>
+</div>
+<input type="file" id="restoreInput" accept=".json,application/json" hidden>
+
+<div id="clippy">
+  <div class="clip-bubble" id="clipText"></div>
+  <span class="clip-char" id="clipChar">&#128206;</span>
+</div>
+
+<div id="msnToast">
+  <span class="m-close" id="msnClose">&#10005;</span>
+  <div class="m-from" id="msnFrom"></div>
+  <div id="msnText"></div>
+</div>
+
+<div id="mineWindow">
+  <div class="title-bar">
+    <span class="title-text">Minesweeper</span>
+    <span class="title-buttons"><span class="tbtn close" id="mineX">&#10005;</span></span>
+  </div>
+  <div class="mine-body">
+    <div class="mine-diff" id="mineDiff">
+      <button data-d="0" class="active">Beginner</button><button data-d="1">Intermediate</button><button data-d="2">Expert</button>
+    </div>
+    <div class="mine-status">
+      <span class="mine-count" id="mineCount">010</span>
+      <span class="mine-face" id="mineFace">&#128578;</span>
+      <span class="mine-count" id="mineTimer">000</span>
+    </div>
+    <div class="mine-grid" id="mineGrid"></div>
+  </div>
+</div>
+
+<div id="screensaver"><canvas id="ssPipes"></canvas></div>
+
+<div id="visitorBanner">&#127881; CONGRATULATIONS! &#127881;<br>You are the 1,000,000th visitor!<br><u>CLICK HERE FOR YOUR PRIZE</u></div>
+
+<span id="pet" title="Definitely not Bonzi">&#129421;</span>
+<div id="petBubble"></div>
+<span id="goose">&#129446;</span>
+<div id="gooseNote">GET BACK TO WORK<br><br>&mdash; &#129446;</div>
+
+<div id="snakeWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text" id="snakeTitle">Snake &#8212; 0</span>
+    <span class="title-buttons"><span class="tbtn close" id="snakeX">&#10005;</span></span>
+  </div>
+  <canvas id="snakeCanvas" width="240" height="240"></canvas>
+</div>
+
+<div id="pinballWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">3D Pinball for Time Tracker</span>
+    <span class="title-buttons"><span class="tbtn close" id="pinballX">&#10005;</span></span>
+  </div>
+  <canvas id="pinballCanvas" width="260" height="380"></canvas>
+</div>
+
+<div id="bossScreen">
+  <div class="boss-title">Microsoft Excel - Q3_Budget_FINAL_v2.xls</div>
+  <div class="boss-menu"><span>File</span><span>Edit</span><span>View</span><span>Insert</span><span>Format</span><span>Tools</span><span>Data</span><span>Window</span><span>Help</span></div>
+  <div class="boss-formula"><span class="cellref">D14</span><span class="fx">=SUM(D2:D13)*1.08</span></div>
+  <table id="bossGrid"></table>
+</div>
+
+<div id="dialup">
+  <div class="title-bar">
+    <span class="title-text">Connecting to Office 56k...</span>
+  </div>
+  <div class="dial-body">
+    <span class="phone">&#128222;</span>
+    <div>
+      <div style="font-weight:bold; margin-bottom:4px">Dialing 1-800-OFFICE...</div>
+      <div id="dialStatus">Verifying username and password...</div>
+      <div class="dial-skip">(click to skip)</div>
+    </div>
+  </div>
+</div>
+
+<div id="lootWin">
+  <div class="title-bar">
+    <span class="title-text">New CD-ROM!</span>
+    <span class="title-buttons"><span class="tbtn close" id="lootX">&#10005;</span></span>
+  </div>
+  <div class="loot-body">
+    <div style="margin-bottom:8px">You earned a CD for finishing your 8 hours!</div>
+    <span id="lootCd">&#128191;</span>
+    <div id="lootResult"></div>
+    <div style="color:#555; margin-top:8px">(click the CD to open it)</div>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="dash-head">
+    <button id="dashBack">&#8592; Back</button>
+    <h1>Work History</h1>
+    <input id="dashSearch" placeholder="Search date or note&hellip;">
+  </div>
+  <div class="dash-body">
+    <div class="dash-cards" id="dashCards"></div>
+    <div class="dash-panel">
+      <h2>Hours per month &#8212; last 12 months</h2>
+      <div class="dash-bars" id="dashBars"></div>
+    </div>
+    <div class="dash-panel">
+      <h2>Daily activity &#8212; last 12 months</h2>
+      <div class="dash-heat" id="dashHeat"></div>
+      <div class="heat-legend">Less <i></i><i class="hl1"></i><i class="hl2"></i><i class="hl3"></i><i class="hl4"></i> More</div>
+    </div>
+    <div class="dash-panel">
+      <h2>All days</h2>
+      <div id="dashTable"></div>
+    </div>
+  </div>
+</div>
+
+<div id="binWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">Recycle Bin</span>
+    <span class="title-buttons"><span class="tbtn close" id="binX">&#10005;</span></span>
+  </div>
+  <div class="panel-body">
+    <div class="wa-list" id="binList"></div>
+    <div class="set-actions">
+      <button id="binRestoreAll">Restore All</button>
+    </div>
+  </div>
+</div>
+
+<div id="settingsWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">Control Panel</span>
+    <span class="title-buttons"><span class="tbtn close" id="settingsX">&#10005;</span></span>
+  </div>
+  <div class="panel-body">
+    <div class="set-row"><label for="setName">Display name</label><input id="setName" type="text" maxlength="20"></div>
+    <div class="set-row"><label for="setTarget">Daily target (hours)</label><input id="setTarget" type="number" min="1" max="16" step="0.5"></div>
+    <div class="set-row"><label for="setSound">Sound effects</label><input id="setSound" type="checkbox"></div>
+    <div class="set-row"><label for="setVolume">Volume</label><input id="setVolume" type="range" min="0" max="100"></div>
+    <div class="set-actions"><button id="setSave">OK</button><button id="setCancel">Cancel</button></div>
+  </div>
+</div>
+
+<div id="achWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">Achievements</span>
+    <span class="title-buttons"><span class="tbtn close" id="achX">&#10005;</span></span>
+  </div>
+  <div class="panel-body ach-grid" id="achBody"></div>
+</div>
+
+<div id="winampWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">Winamp &#8212; it really whips</span>
+    <span class="title-buttons"><span class="tbtn close" id="winampX">&#10005;</span></span>
+  </div>
+  <div class="panel-body">
+    <div class="wa-display" id="waDisplay">*** WINAMP 2.95 ***</div>
+    <div class="wa-list" id="waList"></div>
+    <div class="set-actions"><button id="waStopBtn">&#9632; Stop</button></div>
+  </div>
+</div>
+
+<div id="msnWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">MSN Messenger</span>
+    <span class="title-buttons"><span class="tbtn close" id="msnWinX">&#10005;</span></span>
+  </div>
+  <div class="panel-body">
+    <div class="msn-me" id="msnMe"></div>
+    <div class="wa-list" id="msnBuddies"></div>
+    <div class="set-actions"><button id="msnNudgeBtn">Send Nudge</button></div>
+  </div>
+</div>
+
+<div id="defragWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">Disk Defragmenter</span>
+    <span class="title-buttons"><span class="tbtn close" id="defragX">&#10005;</span></span>
+  </div>
+  <div class="panel-body">
+    <div class="df-grid" id="dfGrid"></div>
+    <div class="df-status" id="dfStatus">Ready</div>
+    <div class="set-actions"><button id="dfStart">Defragment</button></div>
+  </div>
+</div>
+
+<div id="shutdownScreen">
+  <div class="sd-text">It is now safe to turn off<br>your computer.</div>
+  <div class="sd-hint">(click anywhere to turn it back on)</div>
+</div>
+
+<div id="bsod"></div>
+
+<div id="loginScreen">
+  <div class="login-left">To begin, click your user name</div>
+  <div id="loginAccts"></div>
+</div>
+
+<div id="bootScreen">
+  <div class="boot-title">Office Time Tracker<span> XP</span></div>
+  <div class="boot-bar"><div class="boot-blocks"><i></i><i></i><i></i></div></div>
+</div>
+
+<script>
+let data = null;
+let timer = null;
+
+const $ = id => document.getElementById(id);
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// --- Multi-profile storage ---
+// The first (legacy) user keeps un-prefixed keys so pre-existing data still works.
+let users = [];
+try { users = JSON.parse(localStorage.getItem('timetracker_users')) || []; } catch (e) { users = []; }
+if (!users.length) users = ['Akshay'];
+localStorage.setItem('timetracker_users', JSON.stringify(users));
+let currentUser = localStorage.getItem('timetracker_lastuser') || users[0];
+if (!users.includes(currentUser)) currentUser = users[0];
+
+function storeKey(base) {
+  return currentUser === users[0] ? base : base + '::' + currentUser;
+}
+function lsGet(base) { return localStorage.getItem(storeKey(base)); }
+function lsSet(base, val) { localStorage.setItem(storeKey(base), val); }
+function lsRemove(base) { localStorage.removeItem(storeKey(base)); }
+function lsGetJSON(base, fallback) {
+  try {
+    const v = JSON.parse(lsGet(base));
+    return v === null || v === undefined ? fallback : v;
+  } catch (e) { return fallback; }
+}
+
+const BASE_KEYS = ['timetracker_json', 'timetracker_history', 'timetracker_achievements',
+  'timetracker_prestige', 'timetracker_cds', 'timetracker_scores', 'timetracker_settings',
+  'timetracker_recycle'];
+
+// --- Settings ---
+const SETTINGS_KEY = 'timetracker_settings';
+let settings = Object.assign({ targetMin: 480, sound: true, volume: 100 }, lsGetJSON(SETTINGS_KEY, {}));
+function saveSettings() { lsSet(SETTINGS_KEY, JSON.stringify(settings)); }
+function soundVol(v) { return v * (settings.volume / 100); }
+
+// --- Monthly history ---
+const HISTORY_KEY = 'timetracker_history';
+let history = lsGetJSON(HISTORY_KEY, {});
+
+// --- Recycle bin: deleted days are recoverable until the bin is emptied ---
+const RECYCLE_KEY = 'timetracker_recycle';
+let recycle = lsGetJSON(RECYCLE_KEY, {});
+
+let viewMonth = new Date(); // month currently shown in the monthly view
+
+function dateKey(d) {
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+function saveDayToHistory(dayKey, workedMs, breakMs, targetMs) {
+  // Merge with what's on disk first: another tab (or an older session) may have
+  // recorded days this tab doesn't know about — never clobber them.
+  const disk = lsGetJSON(HISTORY_KEY, {});
+  Object.keys(disk).forEach(k => { if (!history[k]) history[k] = disk[k]; });
+  const prev = history[dayKey] || {};
+  history[dayKey] = { worked: workedMs, breaks: breakMs, target: targetMs };
+  if (prev.note) history[dayKey].note = prev.note;
+  lsSet(HISTORY_KEY, JSON.stringify(history));
+}
+
+// If another tab updates the history, pick it up live
+window.addEventListener('storage', e => {
+  if (e.key === storeKey(HISTORY_KEY)) {
+    history = lsGetJSON(HISTORY_KEY, {});
+    renderMonth();
+  }
+});
+
+// --- Loading ---
+$('dropZone').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) readFile(e.target.files[0]);
+});
+$('dropZone').addEventListener('dragover', e => {
+  e.preventDefault();
+  $('dropZone').classList.add('dragover');
+});
+$('dropZone').addEventListener('dragleave', () => $('dropZone').classList.remove('dragover'));
+$('dropZone').addEventListener('drop', e => {
+  e.preventDefault();
+  $('dropZone').classList.remove('dragover');
+  if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);
+});
+$('loadBtn').addEventListener('click', () => loadJson($('jsonInput').value, true));
+
+// Pasting into the textarea loads immediately
+$('jsonInput').addEventListener('paste', () => {
+  setTimeout(() => loadJson($('jsonInput').value, true), 0);
+});
+
+// After a successful load the input hides; this brings it back
+$('newDataBtn').addEventListener('click', () => {
+  $('loadedBar').style.display = 'none';
+  $('inputArea').style.display = 'block';
+  $('jsonInput').focus();
+});
+
+// Punch out in the app just before doing the real punch out at the office
+$('punchOutBtn').addEventListener('click', () => {
+  if (!data) return;
+  const open = data.sessions_today.find(s => !s.punch_out);
+  if (!open) return;
+  open.punch_out = new Date().toISOString();
+  lsSet('timetracker_json', JSON.stringify(data, null, 2));
+  tada();
+  fireworks();
+  render();
+});
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    $('jsonInput').value = reader.result;
+    loadJson(reader.result, true);
+  };
+  reader.readAsText(file);
+}
+
+function loadJson(text, focus) {
+  hideError();
+  if (!text.trim()) return showError('Please upload or paste your JSON first.');
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    return showError('Invalid JSON: ' + e.message);
+  }
+  if (!Array.isArray(parsed.sessions_today) || parsed.sessions_today.length === 0) {
+    return showError('JSON must contain a "sessions_today" array with at least one session.');
+  }
+  // Validate sessions: punch_in must be a valid date, punch_out (if any) must be after punch_in
+  for (let i = 0; i < parsed.sessions_today.length; i++) {
+    const s = parsed.sessions_today[i];
+    const pin = new Date(s.punch_in);
+    if (!s.punch_in || isNaN(pin)) return showError('Session ' + (i + 1) + ' has a missing or invalid punch_in.');
+    if (s.punch_out) {
+      const pout = new Date(s.punch_out);
+      if (isNaN(pout)) return showError('Session ' + (i + 1) + ' has an invalid punch_out.');
+      if (pout <= pin) return showError('Session ' + (i + 1) + ': punch_out must be after punch_in.');
+    }
+  }
+  // Warn about overlapping sessions (times would be double-counted)
+  const chk = [...parsed.sessions_today].sort((a, b) => new Date(a.punch_in) - new Date(b.punch_in));
+  for (let i = 1; i < chk.length; i++) {
+    const prevOut = chk[i - 1].punch_out ? new Date(chk[i - 1].punch_out) : null;
+    if (prevOut && new Date(chk[i].punch_in) < prevOut) {
+      showBalloon('\u26A0\uFE0F Warning: two sessions overlap \u2014 worked time may be double-counted.');
+      break;
+    }
+  }
+  data = parsed;
+  lsSet('timetracker_json', text);
+  // Ask for notification permission on first real use (user gesture context)
+  if ('Notification' in window && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) { /* older API */ }
+  }
+  // Hide the input until "Load New Data" is clicked
+  $('jsonInput').value = '';
+  $('inputArea').style.display = 'none';
+  $('loadedBar').style.display = 'flex';
+  $('result').style.display = 'block';
+  render();
+  clearInterval(timer);
+  // Only tick live when the data is for today
+  if (dateKey(new Date(parsed.sessions_today[0].punch_in)) === dateKey(new Date())) {
+    timer = setInterval(render, 1000);
+  }
+  // Smooth-scroll to the result and flash it when loaded by a user action
+  if (focus) {
+    $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('result').classList.remove('flash');
+    void $('result').offsetWidth;
+    $('result').classList.add('flash');
+  }
+}
+
+let confirmCallback = null;
+let promptCallback = null;
+
+function showError(msg) {
+  $('msgIcon').textContent = '\u2715';
+  $('msgIcon').className = 'msg-icon';
+  $('msgText').textContent = msg;
+  $('msgInputWrap').style.display = 'none';
+  $('msgOk').style.display = '';
+  $('msgYes').style.display = 'none';
+  $('msgNo').style.display = 'none';
+  $('msgOverlay').style.display = 'flex';
+  $('msgOk').focus();
+  errorBeep();
+}
+
+function showConfirm(msg, onYes) {
+  confirmCallback = onYes;
+  $('msgIcon').textContent = '?';
+  $('msgIcon').className = 'msg-icon q';
+  $('msgText').textContent = msg;
+  $('msgInputWrap').style.display = 'none';
+  $('msgOk').style.display = 'none';
+  $('msgYes').style.display = '';
+  $('msgNo').style.display = '';
+  $('msgOverlay').style.display = 'flex';
+  $('msgNo').focus();
+  dingSound();
+}
+
+function showInfo(msg) {
+  $('msgIcon').textContent = 'i';
+  $('msgIcon').className = 'msg-icon q';
+  $('msgText').textContent = msg;
+  $('msgInputWrap').style.display = 'none';
+  $('msgOk').style.display = '';
+  $('msgYes').style.display = 'none';
+  $('msgNo').style.display = 'none';
+  $('msgOverlay').style.display = 'flex';
+  $('msgOk').focus();
+  dingSound();
+}
+
+function showPrompt(msg, def, onOk) {
+  promptCallback = onOk;
+  $('msgIcon').textContent = 'i';
+  $('msgIcon').className = 'msg-icon q';
+  $('msgText').textContent = msg;
+  $('msgInputWrap').style.display = 'block';
+  $('msgInput').value = def || '';
+  $('msgOk').style.display = '';
+  $('msgYes').style.display = 'none';
+  $('msgNo').style.display = 'none';
+  $('msgOverlay').style.display = 'flex';
+  $('msgInput').focus();
+  dingSound();
+}
+
+function hideError() {
+  confirmCallback = null;
+  promptCallback = null;
+  $('msgInputWrap').style.display = 'none';
+  $('msgOverlay').style.display = 'none';
+}
+$('msgOk').addEventListener('click', () => {
+  const cb = promptCallback;
+  const val = $('msgInput').value;
+  hideError();
+  if (cb) cb(val);
+});
+$('msgX').addEventListener('click', hideError);
+$('msgNo').addEventListener('click', hideError);
+$('msgYes').addEventListener('click', () => {
+  const cb = confirmCallback;
+  hideError();
+  if (cb) cb();
+});
+document.addEventListener('keydown', e => {
+  if ($('msgOverlay').style.display !== 'flex') return;
+  if (e.key === 'Escape') hideError();
+  else if (e.key === 'Enter' && $('msgOk').style.display !== 'none') $('msgOk').click();
+});
+
+// Two-tone chime in the spirit of the XP error sound
+function errorBeep() {
+  if (!settings.sound) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(Math.max(0.001, soundVol(0.12)), ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+    gain.connect(ctx.destination);
+    [[622, 0], [415, 0.18]].forEach(([freq, t]) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.connect(gain);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.25);
+    });
+  } catch (e) { /* audio not available */ }
+}
+
+// --- Title bar buttons ---
+$('btnMin').addEventListener('click', () => {
+  document.querySelector('.xp-window').classList.toggle('rolled');
+});
+$('btnMax').addEventListener('click', () => {
+  const win = document.querySelector('.xp-window');
+  win.classList.toggle('windowed');
+  win.classList.remove('dragged');
+  win.style.left = win.style.top = '';
+});
+$('btnClose').addEventListener('click', shutdown);
+
+// --- Calculation ---
+function render() {
+  const now = new Date();
+  const targetMs = (data.target_minutes || settings.targetMin) * 60000;
+  const sorted = [...data.sessions_today].sort((a, b) => new Date(a.punch_in) - new Date(b.punch_in));
+
+  // If the loaded data is from a previous day, the final punch-out is missing
+  // (it happens when leaving the office). Assume you left when the target was met.
+  const isPastDay = dateKey(new Date(sorted[0].punch_in)) !== dateKey(now);
+
+  let workedMs = 0;
+  let isWorking = false;
+  const rows = [];
+
+  sorted.forEach((s, i) => {
+    const start = new Date(s.punch_in);
+    let end, outCell;
+    if (s.punch_out) {
+      end = new Date(s.punch_out);
+      outCell = fmtClock(end);
+    } else if (isPastDay) {
+      end = new Date(start.getTime() + Math.max(0, targetMs - workedMs));
+      outCell = fmtClock(end) + ' <span style="color:#64748b">(est.)</span>';
+    } else {
+      end = now;
+      isWorking = true;
+      outCell = '<span class="ongoing">Working...</span>';
+    }
+    const dur = Math.max(0, end - start);
+    workedMs += dur;
+    rows.push(
+      '<tr><td>' + (i + 1) + '</td>' +
+      '<td>' + fmtClock(start) + '</td>' +
+      '<td>' + outCell + '</td>' +
+      '<td>' + fmtDur(dur) + '</td></tr>'
+    );
+  });
+
+  // Break time = gaps between sessions (plus any reported break_minutes if larger)
+  let gapMs = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    const prevOut = sorted[i - 1].punch_out ? new Date(sorted[i - 1].punch_out) : null;
+    if (prevOut) gapMs += Math.max(0, new Date(sorted[i].punch_in) - prevOut);
+  }
+  const breakMs = Math.max(gapMs, (data.break_minutes || 0) * 60000);
+
+  const remainingMs = targetMs - workedMs;
+
+  // Status + leave time
+  const badge = $('statusBadge');
+  const leaveTime = $('leaveTime');
+  if (isPastDay) {
+    badge.textContent = 'Past day';
+    badge.className = 'status-badge status-out';
+    if (remainingMs <= 0) {
+      $('leaveLabel').textContent = 'Day recorded. Overtime:';
+      leaveTime.textContent = fmtDur(-remainingMs);
+      leaveTime.className = 'leave-time done';
+    } else {
+      $('leaveLabel').textContent = 'Day recorded. Short of target by:';
+      leaveTime.textContent = fmtDur(remainingMs);
+      leaveTime.className = 'leave-time';
+    }
+  } else if (remainingMs <= 0) {
+    badge.textContent = 'Target complete';
+    badge.className = 'status-badge status-done';
+    $('leaveLabel').textContent = 'You can leave now! Overtime:';
+    leaveTime.textContent = fmtDur(-remainingMs);
+    leaveTime.className = 'leave-time done';
+  } else if (isWorking) {
+    badge.textContent = 'Working';
+    badge.className = 'status-badge status-working';
+    $('leaveLabel').textContent = 'You can leave at';
+    leaveTime.textContent = fmtClock(new Date(now.getTime() + remainingMs));
+    leaveTime.className = 'leave-time';
+  } else {
+    badge.textContent = 'Punched out';
+    badge.className = 'status-badge status-out';
+    $('leaveLabel').textContent = 'If you punch in now, you can leave at';
+    leaveTime.textContent = fmtClock(new Date(now.getTime() + remainingMs));
+    leaveTime.className = 'leave-time';
+  }
+
+  $('punchOutBtn').style.display = (isWorking && !isPastDay) ? 'block' : 'none';
+
+  $('statusStrip').textContent = badge.textContent + '  |  Worked: ' + fmtDur(workedMs);
+
+  $('workedVal').textContent = fmtDur(workedMs);
+  $('remainingVal').textContent = remainingMs > 0 ? fmtDur(remainingMs) : 'Done';
+  $('breakVal').textContent = fmtDur(breakMs);
+
+  const pct = Math.min(100, (workedMs / targetMs) * 100);
+  $('progressFill').style.width = pct + '%';
+  $('progressText').textContent = pct.toFixed(1) + '% of ' + fmtDur(targetMs);
+
+  $('sessionsBody').innerHTML = rows.join('');
+
+  // Tab title countdown
+  if (isPastDay) {
+    document.title = 'Office Time Tracker';
+  } else if (remainingMs > 0) {
+    document.title = fmtDurShort(remainingMs) + ' left \u2014 Office Time Tracker';
+  } else {
+    document.title = '\u2714 You can leave now \u2014 Office Time Tracker';
+  }
+
+  // Record this day in monthly history (keyed by the day of the first punch-in).
+  // Only persist + rebuild the monthly table/chart when a displayed value actually
+  // changes (once a minute), so the live 1s tick doesn't thrash the DOM.
+  const dayKey = dateKey(new Date(sorted[0].punch_in));
+  const monthSig = dayKey + '|' + Math.floor(workedMs / 60000) + '|' + Math.floor(breakMs / 60000) + '|' + targetMs;
+  if (monthSig !== lastMonthSig) {
+    lastMonthSig = monthSig;
+    saveDayToHistory(dayKey, workedMs, breakMs, targetMs);
+    renderMonth();
+  }
+
+  // Balloon tip + solitaire cards + CD loot the moment the target is met while still working
+  if (!isPastDay && isWorking && remainingMs <= 0 && balloonShownFor !== dayKey) {
+    balloonShownFor = dayKey;
+    showBalloon("You've completed your 8 hours \u2014 you can leave now!");
+    dingSound();
+    solitaireWin();
+    setTimeout(showLoot, 5000);
+  }
+
+  // Overtime punishment: grey out and nag past +1h overtime
+  const winEl = document.querySelector('.xp-window');
+  const otMs = -remainingMs - 3600000;
+  if (!isPastDay && isWorking && otMs > 0) {
+    winEl.style.filter = 'grayscale(' + Math.min(1, otMs / 7200000) + ')';
+    document.querySelector('.title-text').textContent = 'GO HOME \u2014 ' + appTitleText();
+    if (Date.now() - lastOtClippy > 600000) {
+      lastOtClippy = Date.now();
+      showClippy(GO_HOME_LINES[Math.floor(Math.random() * GO_HOME_LINES.length)]);
+    }
+  } else {
+    winEl.style.filter = '';
+    document.querySelector('.title-text').textContent = appTitleText();
+  }
+
+  // Random glitch effect after 6h worked
+  if (workedMs > 6 * 3600000 && Date.now() - lastGlitch > 240000 + glitchJitter) {
+    lastGlitch = Date.now();
+    glitchJitter = Math.random() * 240000;
+    winEl.classList.add('glitched');
+    setTimeout(() => winEl.classList.remove('glitched'), 500);
+  }
+
+  // Clippy + MSN nudge as the end of the day approaches
+  if (!isPastDay && isWorking && remainingMs > 0) {
+    if (remainingMs <= 15 * 60000 && clippyShownFor !== dayKey) {
+      clippyShownFor = dayKey;
+      showClippy('Only ' + fmtDurShort(remainingMs) + " left! It looks like you're almost free. Want me to start packing your bag?");
+    }
+    if (remainingMs <= 10 * 60000 && msnShownFor !== dayKey) {
+      msnShownFor = dayKey;
+      showNudge();
+    }
+  }
+
+  // Achievements
+  if (!isPastDay) {
+    const first = new Date(sorted[0].punch_in);
+    if (first.getHours() < 8 || (first.getHours() === 8 && first.getMinutes() <= 30)) award('earlybird');
+    if (remainingMs <= 0) checkStreak();
+    const last = sorted[sorted.length - 1];
+    if (last.punch_out && new Date(last.punch_out).getHours() >= 20) award('nightowl');
+    if (workedMs >= 10 * 3600000) award('marathon');
+  }
+
+  // Browser notifications (fire even when the tab is not focused)
+  if (!isPastDay && isWorking && remainingMs <= 0 && notifiedDoneFor !== dayKey) {
+    notifiedDoneFor = dayKey;
+    notify('Target complete!', 'You have completed your ' + fmtDurShort(targetMs) + ' \u2014 you can leave now.');
+  }
+  if (!isPastDay && isWorking && remainingMs <= -30 * 60000 && notifiedOtFor !== dayKey) {
+    notifiedOtFor = dayKey;
+    notify('Still punched in?', 'You are 30+ minutes past your target. Time to punch out and go home.');
+  }
+}
+
+// Only notify when the tab is in the background; the balloon covers the focused case
+let notifiedDoneFor = null, notifiedOtFor = null;
+let lastMonthSig = null; // signature of the last monthly render (per-minute throttle)
+function notify(title, body) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (document.hasFocus()) return;
+  try { new Notification(title, { body: body }); } catch (e) { /* not supported */ }
+}
+
+// --- Monthly view ---
+function fmtDurShort(ms) {
+  const totalMin = Math.round(ms / 60000);
+  const h = Math.floor(Math.abs(totalMin) / 60);
+  const m = Math.abs(totalMin) % 60;
+  return (totalMin < 0 ? '-' : '') + h + 'h ' + String(m).padStart(2, '0') + 'm';
+}
+
+function renderMonth() {
+  const y = viewMonth.getFullYear();
+  const mo = viewMonth.getMonth();
+  const prefix = y + '-' + String(mo + 1).padStart(2, '0');
+
+  $('monthTitle').textContent = viewMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  const days = Object.keys(history)
+    .filter(k => k.startsWith(prefix))
+    .sort();
+
+  let totalWorked = 0, totalNet = 0;
+  const todayKey = dateKey(new Date());
+  const rows = days.map(k => {
+    const d = history[k];
+    const net = d.worked - (d.target || settings.targetMin * 60000);
+    totalWorked += d.worked;
+    totalNet += net;
+    const dayNum = parseInt(k.slice(8), 10);
+    const label = new Date(y, mo, dayNum).toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + dayNum;
+    return '<tr class="mrow" data-day="' + k + '">' +
+      '<td' + (k === todayKey ? ' class="day-today"' : '') + '>' + label + '</td>' +
+      '<td>' + fmtDurShort(d.worked) + '</td>' +
+      '<td>' + fmtDurShort(d.breaks || 0) + '</td>' +
+      '<td class="' + (net >= 0 ? 'pos' : 'neg') + '">' + (net >= 0 ? '+' : '') + fmtDurShort(net) + '</td>' +
+      '<td class="notecell" title="' + (d.note ? esc(d.note) : 'Add a note') + '">' + (d.note ? '\uD83D\uDCDD' : '\u270E') + '</td></tr>';
+  });
+
+  $('monthBody').innerHTML = rows.join('');
+  $('monthBody').querySelectorAll('.mrow').forEach(tr => {
+    tr.querySelector('.notecell').addEventListener('click', () => editNote(tr.dataset.day));
+  });
+  drawMonthChart(y, mo, prefix);
+  $('monthEmpty').style.display = days.length ? 'none' : 'block';
+  $('mTotalVal').textContent = days.length ? fmtDurShort(totalWorked) : '-';
+  $('mAvgVal').textContent = days.length ? fmtDurShort(totalWorked / days.length) : '-';
+  const netEl = $('mNetVal');
+  netEl.textContent = days.length ? (totalNet >= 0 ? '+' : '') + fmtDurShort(totalNet) : '-';
+  netEl.className = 'value ' + (days.length ? (totalNet >= 0 ? 'pos' : 'neg') : '');
+
+  // Month-based achievements (only judged on the current month)
+  if (prefix === dateKey(new Date()).slice(0, 7)) {
+    if (totalNet >= 5 * 3600000) award('overtime5');
+    if (totalWorked >= 100 * 3600000) award('hundred');
+  }
+
+  renderWeek();
+  renderXP();
+}
+
+// --- Per-day notes ---
+function editNote(k) {
+  showPrompt('Note for ' + k + ' (leave empty to remove):', (history[k] && history[k].note) || '', val => {
+    if (!history[k]) return;
+    val = val.trim();
+    if (val) history[k].note = val;
+    else delete history[k].note;
+    lsSet(HISTORY_KEY, JSON.stringify(history));
+    renderMonth();
+  });
+}
+
+// --- Monthly bar chart ---
+function drawMonthChart(y, mo, prefix) {
+  const cv = $('monthChart');
+  const w = cv.clientWidth || 560;
+  if (cv.width !== w) cv.width = w;
+  const h = cv.height;
+  const c = cv.getContext('2d');
+  c.clearRect(0, 0, w, h);
+  const dim = new Date(y, mo + 1, 0).getDate();
+  const defTarget = settings.targetMin * 60000;
+  let maxMs = defTarget;
+  for (let d = 1; d <= dim; d++) {
+    const rec = history[prefix + '-' + String(d).padStart(2, '0')];
+    if (rec) maxMs = Math.max(maxMs, rec.worked);
+  }
+  maxMs *= 1.1;
+  const bw = w / dim;
+  for (let d = 1; d <= dim; d++) {
+    const rec = history[prefix + '-' + String(d).padStart(2, '0')];
+    if (!rec) continue;
+    const bh = rec.worked / maxMs * (h - 14);
+    const tgt = rec.target || defTarget;
+    c.fillStyle = rec.worked >= tgt ? '#2FB833' : '#C00000';
+    c.fillRect((d - 1) * bw + 1, h - 12 - bh, Math.max(2, bw - 2), bh);
+  }
+  // dashed target line
+  const ty = h - 12 - (defTarget / maxMs) * (h - 14);
+  c.strokeStyle = '#0046D5';
+  c.setLineDash([4, 3]);
+  c.beginPath(); c.moveTo(0, ty); c.lineTo(w, ty); c.stroke();
+  c.setLineDash([]);
+  // sparse day labels
+  c.fillStyle = '#555';
+  c.font = '9px Tahoma';
+  for (let d = 1; d <= dim; d += 5) c.fillText(d, (d - 1) * bw + 2, h - 2);
+}
+
+$('prevMonth').addEventListener('click', () => {
+  viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+  renderMonth();
+});
+$('nextMonth').addEventListener('click', () => {
+  viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+  renderMonth();
+});
+$('todayMonth').addEventListener('click', () => {
+  viewMonth = new Date();
+  renderMonth();
+});
+$('openDash').addEventListener('click', openDashboard);
+// Arrow keys navigate months (unless typing or a game is open)
+document.addEventListener('keydown', e => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  if (e.target.matches('input, textarea')) return;
+  if ($('snakeWindow').style.display === 'block' || $('pinballWindow').style.display === 'block') return;
+  if ($('msgOverlay').style.display === 'flex') return;
+  if ($('dashboard').style.display === 'block') return;
+  viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + (e.key === 'ArrowRight' ? 1 : -1), 1);
+  renderMonth();
+});
+
+// --- Desktop icons ---
+document.querySelectorAll('.dicon').forEach(icon => {
+  icon.addEventListener('click', () => {
+    document.querySelectorAll('.dicon').forEach(i => i.classList.remove('selected'));
+    icon.classList.add('selected');
+  });
+  icon.addEventListener('dblclick', () => {
+    const action = icon.dataset.action;
+    if (action === 'clear-history') {
+      openRecycleBin();
+    } else if (action === 'dashboard') {
+      openDashboard();
+    } else if (action === 'bsod') {
+      showBsod();
+    } else if (action === 'minesweeper') {
+      openMinesweeper();
+    } else if (action === 'virus') {
+      virusStart();
+    } else {
+      showError(icon.dataset.msg);
+    }
+  });
+});
+// clicking the desktop deselects icons
+document.body.addEventListener('click', e => {
+  if (!e.target.closest('.dicon')) {
+    document.querySelectorAll('.dicon').forEach(i => i.classList.remove('selected'));
+  }
+});
+
+// --- Recycle bin logic (restore-only: history can never be deleted) ---
+function restoreDay(k) {
+  if (!recycle[k]) return;
+  const r = Object.assign({}, recycle[k]);
+  delete r.deletedAt;
+  history[k] = r;
+  delete recycle[k];
+  lsSet(HISTORY_KEY, JSON.stringify(history));
+  lsSet(RECYCLE_KEY, JSON.stringify(recycle));
+  renderMonth();
+  renderBin();
+}
+function renderBin() {
+  const keys = Object.keys(recycle).sort().reverse();
+  $('binList').innerHTML = keys.length
+    ? keys.map(k =>
+        '<div class="wa-item" data-k="' + k + '" title="Click to restore this day">\uD83D\uDDD1\uFE0F ' + k +
+        ' \u2014 ' + fmtDurShort(recycle[k].worked) +
+        ' <b style="color:#0046D5">Restore</b></div>').join('')
+    : '<div style="padding:8px; color:#555">The Recycle Bin is empty.</div>';
+  $('binList').querySelectorAll('.wa-item').forEach(el =>
+    el.addEventListener('click', () => {
+      restoreDay(el.dataset.k);
+      showBalloon(el.dataset.k + ' restored to your history.');
+    }));
+}
+function openRecycleBin() {
+  renderBin();
+  $('binWindow').style.display = 'block';
+}
+$('binX').addEventListener('click', () => { $('binWindow').style.display = 'none'; });
+$('binRestoreAll').addEventListener('click', () => {
+  const keys = Object.keys(recycle);
+  if (!keys.length) return;
+  keys.forEach(restoreDay);
+  showBalloon(keys.length + ' day' + (keys.length === 1 ? '' : 's') + ' restored.');
+});
+// --- Taskbar clock ---
+function updateClock() { $('trayClock').textContent = fmtClock(new Date()); }
+updateClock();
+setInterval(updateClock, 1000);
+
+// --- Boot splash (skipped on repeat visits in the same session) ---
+if (sessionStorage.getItem('tt_booted')) {
+  $('bootScreen').style.display = 'none';
+} else {
+  sessionStorage.setItem('tt_booted', '1');
+  setTimeout(() => {
+    const b = $('bootScreen');
+    b.style.opacity = '0';
+    setTimeout(() => { b.style.display = 'none'; }, 600);
+  }, 2500);
+}
+
+// --- Balloon tip ---
+let balloonTimer = null;
+let balloonShownFor = null; // day key the "leave now" balloon was shown for
+function showBalloon(text) {
+  $('balloonText').textContent = text;
+  $('balloon').style.display = 'block';
+  clearTimeout(balloonTimer);
+  balloonTimer = setTimeout(hideBalloon, 10000);
+}
+function hideBalloon() { $('balloon').style.display = 'none'; }
+$('balloonClose').addEventListener('click', hideBalloon);
+
+// --- Sounds (WebAudio) ---
+function playTones(seq, vol, type) {
+  if (!settings.sound) return;
+  vol = Math.max(0.001, soundVol(vol));
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    seq.forEach(([freq, at, dur]) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(vol, ctx.currentTime + at);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + at + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + at);
+      osc.stop(ctx.currentTime + at + dur);
+    });
+  } catch (e) { /* audio not available */ }
+}
+// Rising four-note chime in the spirit of the XP startup sound
+function startupChime() {
+  playTones([[311.13, 0, 0.5], [415.30, 0.13, 0.5], [466.16, 0.26, 0.5], [622.25, 0.39, 0.9]], 0.07);
+}
+// Short "ding" for balloon / punch out
+function dingSound() {
+  playTones([[988, 0, 0.12], [1319, 0.1, 0.3]], 0.1);
+}
+// Nudge buzz for MSN toast
+function nudgeSound() {
+  playTones([[110, 0, 0.18], [110, 0.25, 0.18]], 0.15, 'square');
+}
+// Descending shutdown chime
+function shutdownChime() {
+  playTones([[622.25, 0, 0.5], [466.16, 0.13, 0.5], [415.30, 0.26, 0.5], [311.13, 0.39, 0.9]], 0.07);
+}
+
+// --- Draggable window (windowed mode only) ---
+(function () {
+  const win = document.querySelector('.xp-window');
+  const bar = win.querySelector('.title-bar');
+  let offX = 0, offY = 0, dragging = false;
+  bar.addEventListener('mousedown', e => {
+    if (e.target.closest('.tbtn') || !win.classList.contains('windowed')) return;
+    const r = win.getBoundingClientRect();
+    offX = e.clientX - r.left;
+    offY = e.clientY - r.top;
+    win.classList.add('dragged');
+    win.style.left = r.left + 'px';
+    win.style.top = r.top + 'px';
+    dragging = true;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    win.style.left = (e.clientX - offX) + 'px';
+    win.style.top = Math.max(0, e.clientY - offY) + 'px';
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+})();
+
+// --- Start menu ---
+function closeStart() { $('startMenu').style.display = 'none'; }
+document.querySelector('.start-btn').addEventListener('click', e => {
+  e.stopPropagation();
+  const sm = $('startMenu');
+  sm.style.display = sm.style.display === 'block' ? 'none' : 'block';
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#startMenu') && !e.target.closest('.start-btn')) closeStart();
+});
+$('smHours').addEventListener('click', () => { closeStart(); $('monthly').scrollIntoView({ behavior: 'smooth' }); });
+$('smMine').addEventListener('click', () => { closeStart(); openMinesweeper(); });
+$('smRun').addEventListener('click', () => {
+  closeStart();
+  showError("Windows cannot find 'motivation.exe'. Make sure you typed the name correctly, and then try again.");
+});
+$('smShut').addEventListener('click', () => { closeStart(); shutdown(); });
+$('smTrophies').addEventListener('click', () => { closeStart(); openAchievements(); });
+$('smScores').addEventListener('click', () => {
+  closeStart();
+  const names = Object.keys(scores);
+  if (!names.length) return showInfo('No high scores yet. The games are on the Start menu \u2014 for "productivity research".');
+  showInfo('Hall of Fame:\n\n' + names.map(n =>
+    '\uD83E\uDD47 ' + n + ': ' + scores[n] + (n.startsWith('Minesweeper') ? 's' : ' pts')).join('\n'));
+});
+$('smWinamp').addEventListener('click', () => { closeStart(); openWinamp(); });
+$('smMsn').addEventListener('click', () => { closeStart(); openMsn(); });
+$('smDefrag').addEventListener('click', () => { closeStart(); openDefrag(); });
+$('smSettings').addEventListener('click', () => { closeStart(); openSettings(); });
+$('smExport').addEventListener('click', () => { closeStart(); exportCsv(); });
+$('smBackup').addEventListener('click', () => { closeStart(); backupAll(); });
+$('smRestore').addEventListener('click', () => { closeStart(); $('restoreInput').click(); });
+$('restoreInput').addEventListener('change', e => {
+  if (e.target.files[0]) restoreBackup(e.target.files[0]);
+  e.target.value = '';
+});
+$('smLogoff').addEventListener('click', () => {
+  closeStart();
+  waStop();
+  loggedIn = false;
+  renderLogin();
+  const l = $('loginScreen');
+  l.style.display = 'flex';
+  l.style.opacity = '1';
+});
+
+// --- Export / backup / restore ---
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: type }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+function exportCsv() {
+  const keys = Object.keys(history).sort();
+  if (!keys.length) return showInfo('No history to export yet.');
+  const rows = ['Date,Worked (h),Breaks (h),Target (h),Net (h),Note'];
+  keys.forEach(k => {
+    const d = history[k];
+    const tgt = d.target || settings.targetMin * 60000;
+    rows.push([
+      k,
+      (d.worked / 3600000).toFixed(2),
+      ((d.breaks || 0) / 3600000).toFixed(2),
+      (tgt / 3600000).toFixed(2),
+      ((d.worked - tgt) / 3600000).toFixed(2),
+      '"' + String(d.note || '').replace(/"/g, '""') + '"'
+    ].join(','));
+  });
+  download('timetracker-history-' + currentUser + '.csv', rows.join('\n'), 'text/csv');
+  showBalloon('History exported as CSV.');
+}
+function backupAll() {
+  const out = { _app: 'timetracker-backup', user: currentUser, exported: new Date().toISOString() };
+  BASE_KEYS.forEach(b => {
+    const v = lsGet(b);
+    if (v !== null) out[b] = v;
+  });
+  download('timetracker-backup-' + currentUser + '.json', JSON.stringify(out, null, 2), 'application/json');
+  showBalloon('Backup downloaded. Keep it somewhere safe \u2014 not on a floppy.');
+}
+function restoreBackup(file) {
+  const r = new FileReader();
+  r.onload = () => {
+    let obj;
+    try {
+      obj = JSON.parse(r.result);
+      if (obj._app !== 'timetracker-backup') throw new Error('bad');
+    } catch (e) {
+      return showError('This is not a valid Time Tracker backup file.');
+    }
+    showConfirm('Restore this backup into profile "' + currentUser + '"?\nWork history will be merged \u2014 no recorded days are ever lost.', () => {
+      BASE_KEYS.forEach(b => {
+        if (obj[b] === undefined) return;
+        // History (and the bin) merge day-by-day so restoring an old backup
+        // can never erase days recorded after it was made.
+        if (b === HISTORY_KEY || b === RECYCLE_KEY) {
+          let current = {}, incoming = {};
+          try { current = JSON.parse(lsGet(b)) || {}; } catch (e) { /* corrupt -> replace */ }
+          try { incoming = JSON.parse(obj[b]) || {}; } catch (e) { /* bad backup part -> skip */ return; }
+          lsSet(b, JSON.stringify(Object.assign({}, incoming, current)));
+        } else {
+          lsSet(b, obj[b]);
+        }
+      });
+      loadUserState();
+      showBalloon('Backup restored. History was merged with existing records.');
+    });
+  };
+  r.readAsText(file);
+}
+
+// --- Clippy ---
+let clipTimer = null;
+let clippyShownFor = null;
+function showClippy(text) {
+  $('clipText').textContent = text;
+  $('clippy').style.display = 'block';
+  clearTimeout(clipTimer);
+  clipTimer = setTimeout(hideClippy, 12000);
+}
+function hideClippy() { $('clippy').style.display = 'none'; }
+$('clipChar').addEventListener('click', hideClippy);
+$('clipText').addEventListener('click', hideClippy);
+
+// --- MSN nudge ---
+const MSN_MSGS = [
+  ['Dave', 'you still here?? \uD83D\uDE1C'],
+  ['Priya', 'coffee run before you leave?'],
+  ['Sam', 'bro just leave, the build can wait \uD83C\uDFC3'],
+  ['IT Helpdesk', 'Please remember to log off before leaving. Thank you.']
+];
+let msnShownFor = null, msnTimer = null;
+function showNudge() {
+  const m = MSN_MSGS[Math.floor(Math.random() * MSN_MSGS.length)];
+  $('msnFrom').textContent = '\uD83D\uDFE2 ' + m[0] + ' says:';
+  $('msnText').textContent = m[1];
+  const t = $('msnToast');
+  t.style.display = 'block';
+  t.classList.remove('nudge');
+  void t.offsetWidth; // restart animation
+  t.classList.add('nudge');
+  nudgeSound();
+  clearTimeout(msnTimer);
+  msnTimer = setTimeout(() => { t.style.display = 'none'; }, 12000);
+}
+$('msnClose').addEventListener('click', () => { $('msnToast').style.display = 'none'; });
+
+// --- Screensaver (after 2 min idle) ---
+let lastActivity = Date.now(), ssOn = false, ssRAF = null;
+['mousemove', 'keydown', 'pointerdown'].forEach(ev =>
+  document.addEventListener(ev, () => {
+    lastActivity = Date.now();
+    if (ssOn) stopScreensaver();
+  })
+);
+setInterval(() => {
+  if (!ssOn && Date.now() - lastActivity > 120000) startScreensaver();
+}, 5000);
+function startScreensaver() {
+  ssOn = true;
+  $('screensaver').style.display = 'block';
+  const cv = $('ssPipes');
+  cv.width = innerWidth;
+  cv.height = innerHeight;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#000';
+  c.fillRect(0, 0, cv.width, cv.height);
+  if (Math.random() < 0.5) runStarfield(cv, c);
+  else runPipes(cv, c);
+}
+function runStarfield(cv, c) {
+  const cx = cv.width / 2, cy = cv.height / 2;
+  const stars = [];
+  for (let i = 0; i < 250; i++) {
+    stars.push({ x: Math.random() * cv.width - cx, y: Math.random() * cv.height - cy, z: Math.random() * cv.width });
+  }
+  function step() {
+    if (!ssOn) return;
+    c.fillStyle = 'rgba(0,0,0,0.55)';
+    c.fillRect(0, 0, cv.width, cv.height);
+    c.fillStyle = '#fff';
+    stars.forEach(s => {
+      s.z -= 8;
+      if (s.z <= 1) {
+        s.x = Math.random() * cv.width - cx;
+        s.y = Math.random() * cv.height - cy;
+        s.z = cv.width;
+      }
+      const k = 128 / s.z;
+      const size = Math.max(0.5, (1 - s.z / cv.width) * 3);
+      c.fillRect(s.x * k + cx, s.y * k + cy, size, size);
+    });
+    ssRAF = requestAnimationFrame(step);
+  }
+  step();
+}
+function runPipes(cv, c) {
+  const STEP = 24;
+  let px, py, dir, col, len;
+  const DIRS = [[STEP, 0], [-STEP, 0], [0, STEP], [0, -STEP]];
+  function newPipe() {
+    px = Math.floor(Math.random() * cv.width / STEP) * STEP;
+    py = Math.floor(Math.random() * cv.height / STEP) * STEP;
+    dir = DIRS[Math.floor(Math.random() * 4)];
+    col = 'hsl(' + Math.floor(Math.random() * 360) + ', 80%, 55%)';
+    len = 0;
+  }
+  newPipe();
+  let cleared = Date.now();
+  function step() {
+    if (!ssOn) return;
+    for (let k = 0; k < 3; k++) {
+      if (Math.random() < 0.25) {
+        const turns = dir[0] === 0 ? [[STEP, 0], [-STEP, 0]] : [[0, STEP], [0, -STEP]];
+        dir = turns[Math.floor(Math.random() * 2)];
+      }
+      const nx = px + dir[0], ny = py + dir[1];
+      if (nx < 0 || ny < 0 || nx > cv.width || ny > cv.height || ++len > 220) { newPipe(); continue; }
+      c.strokeStyle = col;
+      c.lineWidth = 14;
+      c.lineCap = 'round';
+      c.beginPath(); c.moveTo(px, py); c.lineTo(nx, ny); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.35)';
+      c.lineWidth = 4;
+      c.beginPath(); c.moveTo(px - 3, py - 3); c.lineTo(nx - 3, ny - 3); c.stroke();
+      px = nx; py = ny;
+    }
+    if (Date.now() - cleared > 30000) {
+      c.fillStyle = '#000';
+      c.fillRect(0, 0, cv.width, cv.height);
+      cleared = Date.now();
+    }
+    ssRAF = requestAnimationFrame(step);
+  }
+  step();
+}
+function stopScreensaver() {
+  ssOn = false;
+  cancelAnimationFrame(ssRAF);
+  $('screensaver').style.display = 'none';
+}
+
+// --- Shutdown ---
+let shuttingDown = false;
+function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  shutdownChime();
+  setTimeout(() => { $('shutdownScreen').style.display = 'flex'; }, 700);
+}
+$('shutdownScreen').addEventListener('click', () => location.reload());
+
+// --- BSOD prank ---
+const BSOD_TEXT =
+  'A problem has been detected and Windows has been shut down to prevent damage\n' +
+  'to your computer.\n\n' +
+  'WORKED_TOO_HARD_EXCEPTION\n\n' +
+  "If this is the first time you've seen this Stop error screen, restart your\n" +
+  'computer. If this screen appears again, follow these steps:\n\n' +
+  'Check to make sure you have taken enough coffee breaks. Reduce meetings\n' +
+  'to a minimum. Disable overtime in BIOS.\n\n' +
+  'Technical information:\n\n' +
+  '*** STOP: 0x00000008 (0x000000TT, 0xC0FFEE00, 0x00000000, 0x8B00B1E5)\n\n' +
+  'Beginning dump of physical memory\n' +
+  'Physical memory dump complete.';
+function showBsod() {
+  $('bsod').textContent = BSOD_TEXT;
+  $('bsod').style.display = 'block';
+  setTimeout(() => { $('bsod').style.display = 'none'; }, 2600);
+}
+
+// --- Login screen (multi-profile, with dial-up handshake) ---
+let loggedIn = false;
+function renderLogin() {
+  const c = $('loginAccts');
+  c.innerHTML = users.map(u =>
+    '<div class="login-acct" data-user="' + esc(u) + '">' +
+    '<div class="avatar">' + esc((u[0] || 'U').toUpperCase()) + '</div>' +
+    '<div><div class="la-name">' + esc(u) + '</div><div class="la-sub">Time Tracker User</div></div></div>'
+  ).join('') +
+  '<div class="login-acct" id="loginAdd"><div class="avatar">+</div>' +
+  '<div><div class="la-name">Add User</div><div class="la-sub">Create a new profile</div></div></div>';
+  c.querySelectorAll('.login-acct[data-user]').forEach(el =>
+    el.addEventListener('click', () => login(el.dataset.user)));
+  $('loginAdd').addEventListener('click', () => {
+    showPrompt('New user name:', '', name => {
+      name = name.trim();
+      if (!name) return;
+      if (users.includes(name)) return showError('That user already exists.');
+      users.push(name);
+      localStorage.setItem('timetracker_users', JSON.stringify(users));
+      renderLogin();
+    });
+  });
+}
+let dialIv = null, dialTo = null;
+function login(user) {
+  if (loggedIn) return;
+  loggedIn = true;
+  currentUser = user;
+  localStorage.setItem('timetracker_lastuser', user);
+  loadUserState();
+  // Already dialed once this session? Log straight in.
+  if (sessionStorage.getItem('tt_dialed')) return finishLogin();
+  $('dialup').style.display = 'block';
+  modemSound();
+  const statuses = ['Dialing...', 'Verifying username and password...', 'Negotiating 56,000 bps...', 'Registering your computer on the network...'];
+  let si = 0;
+  dialIv = setInterval(() => {
+    si++;
+    if (si < statuses.length) $('dialStatus').textContent = statuses[si];
+  }, 1100);
+  dialTo = setTimeout(finishLogin, 4700);
+}
+function finishLogin() {
+  clearInterval(dialIv);
+  clearTimeout(dialTo);
+  sessionStorage.setItem('tt_dialed', '1');
+  $('dialup').style.display = 'none';
+  const l = $('loginScreen');
+  l.style.opacity = '0';
+  setTimeout(() => { l.style.display = 'none'; }, 600);
+  startupChime();
+  startDesktopLife();
+  setTimeout(() => showClippy("It looks like you're trying to track work hours. Would you like help looking busy?"), 1500);
+}
+// Click the dial-up window to skip the handshake
+$('dialup').addEventListener('click', () => {
+  if (loggedIn && $('dialup').style.display === 'block') finishLogin();
+});
+
+// Re-read every stored value for the current user and refresh the whole UI
+function loadUserState() {
+  history = lsGetJSON(HISTORY_KEY, {});
+  recycle = lsGetJSON(RECYCLE_KEY, {});
+  achievements = lsGetJSON(ACH_KEY, {});
+  cds = lsGetJSON(CD_KEY, {});
+  scores = lsGetJSON(SCORES_KEY, {});
+  prestige = parseInt(lsGet(PRESTIGE_KEY) || '0', 10);
+  settings = Object.assign({ targetMin: 480, sound: true, volume: 100 }, lsGetJSON(SETTINGS_KEY, {}));
+  notifiedDoneFor = notifiedOtFor = balloonShownFor = clippyShownFor = msnShownFor = lastMonthSig = null;
+  applyPrestigeUi();
+  applyUserUi();
+  clearInterval(timer);
+  const saved = lsGet('timetracker_json');
+  if (saved) {
+    loadJson(saved);
+  } else {
+    data = null;
+    $('result').style.display = 'none';
+    $('loadedBar').style.display = 'none';
+    $('inputArea').style.display = 'block';
+  }
+  renderMonth();
+}
+
+function applyUserUi() {
+  const initial = (currentUser[0] || 'U').toUpperCase();
+  $('avatarLetter').textContent = initial;
+  $('profileName').textContent = currentUser;
+  $('smAvatar').textContent = initial;
+  $('smUser').textContent = currentUser;
+  $('subtitle').textContent = 'Target: ' + (settings.targetMin / 60) + ' working hours. Load your punch JSON to see when you can leave.';
+}
+
+// Renaming migrates the prefixed keys of non-legacy users so no data is lost
+function renameUser(newName) {
+  if (users.includes(newName)) return showError('That user name already exists.');
+  const idx = users.indexOf(currentUser);
+  if (idx !== 0) {
+    BASE_KEYS.forEach(b => {
+      const v = localStorage.getItem(b + '::' + currentUser);
+      if (v !== null) {
+        localStorage.setItem(b + '::' + newName, v);
+        localStorage.removeItem(b + '::' + currentUser);
+      }
+    });
+  }
+  users[idx] = newName;
+  localStorage.setItem('timetracker_users', JSON.stringify(users));
+  currentUser = newName;
+  localStorage.setItem('timetracker_lastuser', newName);
+  applyUserUi();
+}
+
+// Synthesized 56k handshake
+function modemSound() {
+  if (!settings.sound) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const master = ctx.createGain();
+    master.gain.value = Math.max(0.001, soundVol(0.06));
+    master.connect(ctx.destination);
+    const tone = (f, at, d, type) => {
+      const o = ctx.createOscillator();
+      o.type = type || 'sine';
+      o.frequency.value = f;
+      const og = ctx.createGain();
+      og.gain.setValueAtTime(0, ctx.currentTime + at);
+      og.gain.linearRampToValueAtTime(0.9, ctx.currentTime + at + 0.01);
+      og.gain.setValueAtTime(0.9, ctx.currentTime + at + d - 0.01);
+      og.gain.linearRampToValueAtTime(0, ctx.currentTime + at + d);
+      o.connect(og);
+      og.connect(master);
+      o.start(ctx.currentTime + at);
+      o.stop(ctx.currentTime + at + d);
+    };
+    tone(350, 0, 0.4); tone(440, 0, 0.4); // dial tone
+    const rows = [697, 770, 852, 941], cols = [1209, 1336, 1477];
+    for (let i = 0; i < 7; i++) { // DTMF dialing
+      const at = 0.5 + i * 0.12;
+      tone(rows[(i * 3) % 4], at, 0.08);
+      tone(cols[(i * 5) % 3], at, 0.08);
+    }
+    tone(2100, 1.5, 0.6); // carrier
+    tone(1180, 2.2, 0.35, 'square');
+    tone(980, 2.6, 0.35, 'square');
+    // white-noise burst
+    const n = ctx.sampleRate * 1.4;
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) ch[i] = (Math.random() * 2 - 1) * 0.5;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.5, ctx.currentTime + 3.0);
+    ng.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 4.4);
+    src.connect(ng);
+    ng.connect(master);
+    src.start(ctx.currentTime + 3.0);
+  } catch (e) { /* audio not available */ }
+}
+
+// --- Achievements ---
+const ACH_KEY = 'timetracker_achievements';
+let achievements = lsGetJSON(ACH_KEY, {});
+const ACH_NAMES = {
+  earlybird: 'Early Bird \u2014 punched in before 8:30 AM',
+  nightowl: 'Night Owl \u2014 punched out after 8 PM',
+  marathon: 'Marathon \u2014 worked 10+ hours in one day',
+  streak5: 'Consistency \u2014 hit the target 5 weekdays in a row',
+  streak10: 'Unstoppable \u2014 hit the target 10 weekdays in a row',
+  perfectweek: 'Perfect Week \u2014 Mon to Fri, all on target',
+  overtime5: 'Overtime Warrior \u2014 +5h net this month',
+  hundred: '100-Hour Club \u2014 100h worked in one month',
+  sweeper: 'Minesweeper Champion \u2014 cleared the field'
+};
+const ACH_ICONS = {
+  earlybird: '\uD83D\uDC26', nightowl: '\uD83E\uDD89', marathon: '\uD83C\uDFC3',
+  streak5: '\uD83D\uDCC5', streak10: '\uD83D\uDD25', perfectweek: '\u2B50',
+  overtime5: '\u2694\uFE0F', hundred: '\uD83D\uDCAF', sweeper: '\uD83D\uDCA3'
+};
+function award(id) {
+  if (achievements[id]) return;
+  achievements[id] = dateKey(new Date());
+  lsSet(ACH_KEY, JSON.stringify(achievements));
+  showBalloon('\uD83C\uDFC6 Achievement unlocked: ' + ACH_NAMES[id]);
+  dingSound();
+}
+function checkStreak() {
+  let d = new Date(), count = 0;
+  while (count < 10) {
+    if (d.getDay() !== 0 && d.getDay() !== 6) {
+      const rec = history[dateKey(d)];
+      if (!rec || rec.worked < (rec.target || settings.targetMin * 60000) - 60000) break;
+      count++;
+    }
+    d.setDate(d.getDate() - 1);
+  }
+  if (count >= 5) award('streak5');
+  if (count >= 10) award('streak10');
+}
+
+// --- Badge showcase window ---
+function openAchievements() {
+  $('achBody').innerHTML = Object.keys(ACH_NAMES).map(id => {
+    const got = achievements[id];
+    const parts = ACH_NAMES[id].split(' \u2014 ');
+    return '<div class="badge' + (got ? '' : ' locked') + '">' +
+      '<span class="badge-ico">' + ACH_ICONS[id] + '</span>' +
+      '<div><b>' + esc(parts[0]) + '</b>' +
+      '<div class="badge-sub">' + esc(parts[1] || '') + (got ? '<br>Earned ' + esc(got) : '<br>Locked') + '</div></div></div>';
+  }).join('');
+  $('achWindow').style.display = 'block';
+}
+$('achX').addEventListener('click', () => { $('achWindow').style.display = 'none'; });
+
+// --- High scores ---
+const SCORES_KEY = 'timetracker_scores';
+let scores = lsGetJSON(SCORES_KEY, {});
+function updateScore(game, val, lowerBetter) {
+  const cur = scores[game];
+  if (cur === undefined || (lowerBetter ? val < cur : val > cur)) {
+    scores[game] = val;
+    lsSet(SCORES_KEY, JSON.stringify(scores));
+    showBalloon('\uD83C\uDFC6 New record \u2014 ' + game + ': ' + val + (lowerBetter ? 's' : ' pts'));
+  }
+}
+
+// --- XP level system ---
+const LEVELS = [
+  ['Intern', 0], ['Trainee', 400], ['Associate', 1000], ['Senior', 2000],
+  ['Manager', 3500], ['Director', 6000], ['Office Legend', 10000]
+];
+function renderXP() {
+  let ms = 0;
+  Object.values(history).forEach(d => { ms += d.worked; });
+  const totalXp = Math.floor(ms / 3600000 * 10); // 10 XP per worked hour
+  const xp = Math.max(0, totalXp - prestige * LEVELS[LEVELS.length - 1][1]);
+  let lvl = 0;
+  while (lvl + 1 < LEVELS.length && xp >= LEVELS[lvl + 1][1]) lvl++;
+  const next = LEVELS[lvl + 1];
+  const stars = prestige > 0 ? ' \u2B50'.repeat(Math.min(3, prestige)) : '';
+  $('xpLevel').textContent = 'Level ' + (lvl + 1) + ' \u2014 ' + LEVELS[lvl][0] + ' (' + xp + ' XP)' + stars;
+  $('xpFill').style.width = next
+    ? Math.min(100, (xp - LEVELS[lvl][1]) / (next[1] - LEVELS[lvl][1]) * 100) + '%'
+    : '100%';
+  // Prestige available once max level is reached
+  $('prestigeBtn').style.display = (!next || xp >= LEVELS[LEVELS.length - 1][1]) ? 'inline-block' : 'none';
+}
+
+// --- Minesweeper ---
+const MINE_DIFFS = [['Beginner', 9, 9, 10], ['Intermediate', 16, 16, 40], ['Expert', 30, 16, 99]]; // name, cols, rows, mines
+let mDiff = 0, mW = 9, mH = 9, mMines = 10;
+let mGrid = [], mFirst = true, mOver = false, mFlags = 0, mTime = 0, mTimerIv = null;
+function openMinesweeper() {
+  $('mineWindow').style.display = 'block';
+  mineReset();
+}
+$('mineX').addEventListener('click', () => {
+  $('mineWindow').style.display = 'none';
+  clearInterval(mTimerIv);
+});
+$('mineFace').addEventListener('click', mineReset);
+document.querySelectorAll('#mineDiff button').forEach(b => b.addEventListener('click', () => {
+  mDiff = +b.dataset.d;
+  document.querySelectorAll('#mineDiff button').forEach(x => x.classList.toggle('active', x === b));
+  mineReset();
+}));
+function mineReset() {
+  mW = MINE_DIFFS[mDiff][1]; mH = MINE_DIFFS[mDiff][2]; mMines = MINE_DIFFS[mDiff][3];
+  mGrid = []; mFirst = true; mOver = false; mFlags = 0; mTime = 0;
+  clearInterval(mTimerIv);
+  $('mineTimer').textContent = '000';
+  $('mineCount').textContent = String(mMines).padStart(3, '0');
+  $('mineFace').textContent = '\uD83D\uDE42';
+  const g = $('mineGrid');
+  const cs = mW > 16 ? 18 : (mW > 9 ? 21 : 24);
+  g.style.gridTemplateColumns = 'repeat(' + mW + ', ' + cs + 'px)';
+  g.innerHTML = '';
+  for (let i = 0; i < mW * mH; i++) {
+    const c = document.createElement('div');
+    c.className = 'mcell';
+    c.style.width = c.style.height = cs + 'px';
+    c.addEventListener('click', () => mineOpen(i));
+    c.addEventListener('contextmenu', e => { e.preventDefault(); mineFlag(i); });
+    g.appendChild(c);
+    mGrid.push({ mine: false, open: false, flag: false, n: 0 });
+  }
+}
+function mNeighbors(i) {
+  const r = Math.floor(i / mW), c = i % mW, out = [];
+  for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+    if (!dr && !dc) continue;
+    const nr = r + dr, nc = c + dc;
+    if (nr >= 0 && nr < mH && nc >= 0 && nc < mW) out.push(nr * mW + nc);
+  }
+  return out;
+}
+function mPlaceMines(safe) {
+  let placed = 0;
+  while (placed < mMines) {
+    const i = Math.floor(Math.random() * mW * mH);
+    if (i === safe || mGrid[i].mine) continue;
+    mGrid[i].mine = true;
+    placed++;
+  }
+  mGrid.forEach((cell, i) => { cell.n = mNeighbors(i).filter(j => mGrid[j].mine).length; });
+  mTimerIv = setInterval(() => {
+    mTime = Math.min(999, mTime + 1);
+    $('mineTimer').textContent = String(mTime).padStart(3, '0');
+  }, 1000);
+}
+function mCell(i) { return $('mineGrid').children[i]; }
+function mineOpen(i) {
+  if (mOver || mGrid[i].flag || mGrid[i].open) return;
+  if (mFirst) { mFirst = false; mPlaceMines(i); }
+  const cell = mGrid[i];
+  cell.open = true;
+  const el = mCell(i);
+  el.classList.add('open');
+  if (cell.mine) {
+    el.textContent = '\uD83D\uDCA3';
+    el.style.background = '#F00';
+    mineGameOver(false);
+    return;
+  }
+  if (cell.n) {
+    el.textContent = cell.n;
+    el.classList.add('mc' + cell.n);
+  } else {
+    mNeighbors(i).forEach(j => mineOpen(j));
+  }
+  if (!mOver && mGrid.every(c => c.open || c.mine)) mineGameOver(true);
+}
+function mineFlag(i) {
+  if (mOver || mGrid[i].open) return;
+  const cell = mGrid[i];
+  cell.flag = !cell.flag;
+  mCell(i).textContent = cell.flag ? '\uD83D\uDEA9' : '';
+  mFlags += cell.flag ? 1 : -1;
+  $('mineCount').textContent = String(Math.max(0, mMines - mFlags)).padStart(3, '0');
+}
+function mineGameOver(win) {
+  mOver = true;
+  clearInterval(mTimerIv);
+  $('mineFace').textContent = win ? '\uD83D\uDE0E' : '\uD83D\uDE35';
+  if (win) {
+    award('sweeper');
+    updateScore('Minesweeper (' + MINE_DIFFS[mDiff][0] + ')', mTime, true);
+    dingSound();
+  } else {
+    mGrid.forEach((c, i) => {
+      if (c.mine && !c.flag) {
+        const el = mCell(i);
+        el.classList.add('open');
+        el.textContent = '\uD83D\uDCA3';
+      }
+    });
+    errorBeep();
+  }
+}
+
+// --- Solitaire win animation ---
+function solitaireWin() {
+  const cv = document.createElement('canvas');
+  cv.className = 'cards-canvas';
+  cv.width = innerWidth;
+  cv.height = innerHeight;
+  document.body.appendChild(cv);
+  const c2 = cv.getContext('2d');
+  const suits = ['\u2660', '\u2665', '\u2666', '\u2663'];
+  const ranks = ['A', 'K', 'Q', 'J', '10'];
+  const floor = cv.height - 126; // above the taskbar
+  let cards = [], spawned = 0;
+  function spawn() {
+    cards.push({
+      x: 80 + Math.random() * (cv.width - 240),
+      y: -110,
+      vx: (3 + Math.random() * 5) * (Math.random() < 0.5 ? -1 : 1),
+      vy: 2,
+      suit: suits[spawned % 4],
+      rank: ranks[spawned % 5]
+    });
+    spawned++;
+  }
+  spawn();
+  const iv = setInterval(() => { spawned < 10 ? spawn() : clearInterval(iv); }, 900);
+  const t0 = Date.now();
+  function drawCard(c) {
+    c2.fillStyle = '#fff';
+    c2.fillRect(c.x, c.y, 71, 96);
+    c2.strokeStyle = '#000';
+    c2.strokeRect(c.x, c.y, 71, 96);
+    c2.fillStyle = (c.suit === '\u2665' || c.suit === '\u2666') ? '#C00' : '#000';
+    c2.font = 'bold 16px Tahoma';
+    c2.fillText(c.rank, c.x + 6, c.y + 20);
+    c2.font = '30px serif';
+    c2.fillText(c.suit, c.x + 22, c.y + 62);
+  }
+  function step() {
+    cards.forEach(c => {
+      c.vy += 0.5;
+      c.x += c.vx;
+      c.y += c.vy;
+      if (c.y > floor) { c.y = floor; c.vy = -c.vy * 0.75; }
+      drawCard(c);
+    });
+    cards = cards.filter(c => c.x > -110 && c.x < cv.width + 40);
+    if ((cards.length || spawned < 10) && Date.now() - t0 < 20000) {
+      requestAnimationFrame(step);
+    } else {
+      cv.style.transition = 'opacity 1s';
+      cv.style.opacity = '0';
+      setTimeout(() => cv.remove(), 1000);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// --- Desktop life (pet, goose, banners) starts after login ---
+let desktopLifeStarted = false;
+function startDesktopLife() {
+  if (desktopLifeStarted) return;
+  desktopLifeStarted = true;
+  startPet();
+  setInterval(() => { if (Math.random() < 0.5) gooseRun(); }, 150000);
+  setTimeout(showVisitorBanner, 90000 + Math.random() * 120000);
+  setInterval(() => { if (Math.random() < 0.6) showVisitorBanner(); }, 240000);
+}
+
+// --- Virus prank ---
+let vSpawned = 0;
+const V_MSGS = [
+  'SCREENSAVER.EXE has encountered a problem and needs to close.',
+  'Buffer overflow in FUN.DLL',
+  'WARNING: Your computer may be infected with up to 1 viruses!',
+  'Error: The operation completed successfully.',
+  'Not enough memory to display this error message.',
+  'Keyboard not found. Press any key to continue.'
+];
+function virusStart() {
+  vSpawned = 0;
+  virusSpawn(2);
+}
+function virusSpawn(n) {
+  for (let k = 0; k < n; k++) {
+    if (vSpawned >= 12) break;
+    vSpawned++;
+    const d = document.createElement('div');
+    d.className = 'verr';
+    d.style.left = Math.random() * Math.max(40, innerWidth - 320) + 'px';
+    d.style.top = Math.random() * Math.max(40, innerHeight - 220) + 'px';
+    d.innerHTML =
+      '<div class="title-bar"><span class="title-text">System Error</span>' +
+      '<span class="title-buttons"><span class="tbtn close">\u2715</span></span></div>' +
+      '<div class="verr-body"><span class="msg-icon">\u2715</span><span>' +
+      V_MSGS[Math.floor(Math.random() * V_MSGS.length)] + '</span></div>' +
+      '<div class="verr-actions"><button>OK</button></div>';
+    const close = () => {
+      d.remove();
+      if (vSpawned < 12) {
+        virusSpawn(2);
+      } else if (!document.querySelector('.verr')) {
+        showBsod();
+      }
+    };
+    d.querySelector('.tbtn.close').addEventListener('click', close);
+    d.querySelector('button').addEventListener('click', close);
+    document.body.appendChild(d);
+  }
+  errorBeep();
+}
+
+// --- Millionth visitor banner + fake toolbars ---
+let bannerT = null;
+function showVisitorBanner() {
+  const b = $('visitorBanner');
+  b.style.left = 40 + Math.random() * Math.max(40, innerWidth - 400) + 'px';
+  b.style.top = 60 + Math.random() * (innerHeight * 0.4) + 'px';
+  b.style.display = 'block';
+  clearTimeout(bannerT);
+  bannerT = setTimeout(() => { b.style.display = 'none'; }, 15000);
+}
+$('visitorBanner').addEventListener('click', () => {
+  $('visitorBanner').style.display = 'none';
+  installToolbar();
+});
+const TB_NAMES = ['SearchMonkey', 'WebCrawler Pro', 'HotBar Deluxe'];
+function installToolbar() {
+  const count = document.querySelectorAll('.fake-toolbar').length;
+  if (count >= 3) return showError('No more room for toolbars. Congratulations, your browser is complete.');
+  const tb = document.createElement('div');
+  tb.className = 'fake-toolbar';
+  tb.innerHTML = '<b>\uD83D\uDD0D ' + TB_NAMES[count] + ' Toolbar</b>' +
+    '<input placeholder="Search the Web!"><button>Search!</button><span class="tb-x">\u2715</span>';
+  document.querySelector('.menu-bar').after(tb);
+  tb.querySelector('.tb-x').addEventListener('click', () => tb.remove());
+  tb.querySelector('button').addEventListener('click', () => showError('Search failed: The Internet is busy. Please try again later.'));
+  showInfo(TB_NAMES[count] + ' Toolbar has been installed successfully!\n47 more toolbars are available for your prize.');
+}
+
+// --- Esc: close the topmost open window; double-Esc with nothing open = boss key ---
+let lastEsc = 0;
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if ($('dashboard').style.display === 'block') {
+    closeDashboard();
+    lastEsc = 0;
+    return;
+  }
+  if ($('msgOverlay').style.display !== 'flex') {
+    const open = WIN_REGISTRY.map(r => $(r[0])).filter(w => w.style.display === 'block');
+    if (open.length) {
+      const top = open.reduce((a, b) => (+(a.style.zIndex || 0) >= +(b.style.zIndex || 0) ? a : b));
+      const x = top.querySelector('.tbtn.close');
+      if (x) x.click(); else top.style.display = 'none';
+      lastEsc = 0;
+      return;
+    }
+  }
+  const now = Date.now();
+  if (now - lastEsc < 500) showBoss();
+  lastEsc = now;
+});
+function showBoss() {
+  if (!$('bossGrid').rows.length) buildBossGrid();
+  $('bossScreen').style.display = 'block';
+}
+$('bossScreen').addEventListener('click', () => { $('bossScreen').style.display = 'none'; });
+function buildBossGrid() {
+  const heads = ['Item', 'Q1', 'Q2', 'Q3', 'Q4', 'FY Total', 'Budget', 'Variance', '%', 'Notes'];
+  const labels = ['Salaries', 'Office Rent', 'Coffee Supplies', 'Server Costs', 'Travel', 'Misc', 'Stationery', 'Snacks', 'Consulting', 'Software Licenses', 'Training', 'Utilities'];
+  let html = '<tr><th></th>' + heads.map((_, i) => '<th>' + String.fromCharCode(65 + i) + '</th>').join('') + '</tr>';
+  for (let r = 1; r <= 28; r++) {
+    html += '<tr><th>' + r + '</th>';
+    for (let c = 0; c < heads.length; c++) {
+      if (r === 1) html += '<td style="text-align:center;font-weight:bold">' + heads[c] + '</td>';
+      else if (c === 0) html += '<td style="text-align:left">' + (labels[r - 2] || '') + '</td>';
+      else if (c < 9 && r - 2 < labels.length) html += '<td>' + (Math.floor(Math.random() * 90000) + 1000).toLocaleString() + '</td>';
+      else html += '<td></td>';
+    }
+    html += '</tr>';
+  }
+  $('bossGrid').innerHTML = html;
+}
+
+// --- Desktop pet ---
+const PET_FACTS = [
+  'Did you know? The XP wallpaper hill is a real place in California.',
+  'Bananas are berries. Strawberries are not.',
+  'Ctrl+Shift+Esc opens Task Manager directly!',
+  'Honey never spoils. Unlike this codebase.',
+  'The first computer bug was an actual moth.',
+  'A group of flamingos is called a flamboyance.',
+  'You blink less when staring at screens. Blink now!'
+];
+let petDir = 1, petX = 200, petMode = 'walk';
+function petSay(text) {
+  const b = $('petBubble');
+  b.textContent = text;
+  const p = $('pet').getBoundingClientRect();
+  b.style.left = Math.max(6, Math.min(innerWidth - 210, p.left - 60)) + 'px';
+  b.style.top = (p.top - 70) + 'px';
+  b.style.display = 'block';
+  setTimeout(() => { b.style.display = 'none'; }, 6000);
+}
+function randomFact() { return PET_FACTS[Math.floor(Math.random() * PET_FACTS.length)]; }
+function startPet() {
+  const el = $('pet');
+  el.style.display = 'block';
+  setInterval(() => {
+    if (petMode !== 'walk') return;
+    petX += petDir * 1.2;
+    if (petX < 10 || petX > innerWidth - 50) petDir *= -1;
+    else if (Math.random() < 0.004) petDir *= -1;
+    el.style.left = petX + 'px';
+    el.style.transform = 'scaleX(' + (petDir > 0 ? 1 : -1) + ')';
+  }, 40);
+  setInterval(() => { if (Math.random() < 0.5) petSay(randomFact()); }, 45000);
+  setInterval(() => { // occasionally sit on the window title bar
+    if (petMode !== 'walk') return;
+    petMode = 'sit';
+    const w = document.querySelector('.xp-window').getBoundingClientRect();
+    petX = w.left + w.width / 2;
+    el.style.left = petX + 'px';
+    el.style.bottom = Math.max(40, innerHeight - w.top - 4) + 'px';
+    setTimeout(() => { el.style.bottom = '32px'; petMode = 'walk'; }, 9000);
+  }, 70000);
+}
+$('pet').addEventListener('click', () => petSay(randomFact()));
+
+// --- Desktop goose ---
+function gooseRun() {
+  const g = $('goose');
+  if (g.style.display === 'block') return;
+  g.style.display = 'block';
+  let gx = -60, stole = false;
+  const iv = setInterval(() => {
+    gx += 3;
+    g.style.left = gx + 'px';
+    if (!stole && gx > innerWidth * 0.45 && $('clippy').style.display === 'block') {
+      stole = true;
+      hideClippy();
+      showBalloon('\uD83E\uDD86 HONK! (your assistant has been stolen)');
+    }
+    if (gx > innerWidth + 60) {
+      clearInterval(iv);
+      g.style.display = 'none';
+      if (Math.random() < 0.4) {
+        const n = $('gooseNote');
+        n.style.left = 100 + Math.random() * Math.max(60, innerWidth - 350) + 'px';
+        n.style.top = 100 + Math.random() * Math.max(60, innerHeight - 350) + 'px';
+        n.style.display = 'block';
+      }
+    }
+  }, 30);
+}
+$('gooseNote').addEventListener('click', () => { $('gooseNote').style.display = 'none'; });
+
+// --- Snake (click the tray clock) ---
+let snState = null, snIv = null;
+function openSnake() {
+  $('snakeWindow').style.display = 'block';
+  snakeReset();
+}
+function snakeReset() {
+  clearInterval(snIv);
+  snState = { body: [112, 111, 110], dir: 1, food: 40, score: 0, dead: false };
+  snPlaceFood();
+  snIv = setInterval(snTick, 130);
+  snDraw();
+}
+function snPlaceFood() {
+  do { snState.food = Math.floor(Math.random() * 225); }
+  while (snState.body.includes(snState.food));
+}
+function snTick() {
+  const s = snState;
+  if (s.dead) return;
+  const head = s.body[0], d = s.dir;
+  let nx = head + d;
+  if ((d === 1 && nx % 15 === 0) || (d === -1 && (head % 15 === 0)) || nx < 0 || nx >= 225 || s.body.includes(nx)) {
+    s.dead = true;
+    clearInterval(snIv);
+    if (s.score > 0) updateScore('Snake', s.score);
+    errorBeep();
+    snDraw();
+    return;
+  }
+  s.body.unshift(nx);
+  if (nx === s.food) {
+    s.score += 10;
+    $('snakeTitle').textContent = 'Snake \u2014 ' + s.score;
+    snPlaceFood();
+  } else {
+    s.body.pop();
+  }
+  snDraw();
+}
+function snDraw() {
+  const c = $('snakeCanvas').getContext('2d');
+  c.fillStyle = '#000';
+  c.fillRect(0, 0, 240, 240);
+  c.fillStyle = '#F00';
+  c.fillRect((snState.food % 15) * 16 + 2, Math.floor(snState.food / 15) * 16 + 2, 12, 12);
+  c.fillStyle = '#3BD54A';
+  snState.body.forEach(i => c.fillRect((i % 15) * 16 + 1, Math.floor(i / 15) * 16 + 1, 14, 14));
+  if (snState.dead) {
+    c.fillStyle = '#FFF';
+    c.font = 'bold 18px Tahoma';
+    c.fillText('GAME OVER', 65, 110);
+    c.font = '11px Tahoma';
+    c.fillText('click to play again', 75, 132);
+  }
+}
+$('trayClock').addEventListener('click', openSnake);
+$('snakeX').addEventListener('click', () => {
+  $('snakeWindow').style.display = 'none';
+  clearInterval(snIv);
+});
+$('snakeCanvas').addEventListener('click', () => { if (snState && snState.dead) snakeReset(); });
+
+// --- Pinball ---
+let pb = null, pbRAF = null;
+const PB_BUMPERS = [[70, 110, 0], [190, 110, 0], [130, 185, 0]];
+function openPinball() {
+  $('pinballWindow').style.display = 'block';
+  pbReset();
+}
+function pbReset() {
+  pb = { x: 130, y: 60, vx: (Math.random() < 0.5 ? -1 : 1) * 2, vy: 0, balls: 3, score: 0, l: false, r: false, over: false };
+  cancelAnimationFrame(pbRAF);
+  pbLoop();
+}
+function pbLoop() {
+  const cv = $('pinballCanvas'), c = cv.getContext('2d');
+  const W = 260, H = 380, FY = 340;
+  if (!pb.over) {
+    pb.vy += 0.12;
+    pb.x += pb.vx;
+    pb.y += pb.vy;
+    if (pb.x < 10) { pb.x = 10; pb.vx = Math.abs(pb.vx); }
+    if (pb.x > W - 10) { pb.x = W - 10; pb.vx = -Math.abs(pb.vx); }
+    if (pb.y < 10) { pb.y = 10; pb.vy = Math.abs(pb.vy); }
+    PB_BUMPERS.forEach(b => {
+      const dx = pb.x - b[0], dy = pb.y - b[1], dist = Math.hypot(dx, dy) || 1;
+      if (dist < 24) {
+        const sp = Math.max(3.5, Math.hypot(pb.vx, pb.vy));
+        pb.x = b[0] + dx / dist * 24;
+        pb.y = b[1] + dy / dist * 24;
+        pb.vx = dx / dist * sp;
+        pb.vy = dy / dist * sp;
+        pb.score += 100;
+        b[2] = 8;
+      }
+    });
+    if (pb.y > FY - 9 && pb.y < FY + 12 && pb.vy > 0) {
+      if (pb.x >= 28 && pb.x <= 116) {
+        pb.vy = -(pb.l ? 7 : 3.5);
+        if (pb.l) pb.vx += (pb.x - 72) / 18;
+        pb.y = FY - 10;
+      } else if (pb.x >= 144 && pb.x <= 232) {
+        pb.vy = -(pb.r ? 7 : 3.5);
+        if (pb.r) pb.vx += (pb.x - 188) / 18;
+        pb.y = FY - 10;
+      }
+    }
+    if (pb.y > H + 12) {
+      pb.balls--;
+      if (pb.balls <= 0) {
+        pb.over = true;
+        if (pb.score > 0) updateScore('Pinball', pb.score);
+      } else { pb.x = 130; pb.y = 60; pb.vx = (Math.random() < 0.5 ? -1 : 1) * 2; pb.vy = 0; }
+    }
+  }
+  c.fillStyle = '#062B61';
+  c.fillRect(0, 0, W, H);
+  PB_BUMPERS.forEach(b => {
+    c.beginPath();
+    c.arc(b[0], b[1], 16, 0, 7);
+    c.fillStyle = b[2] > 0 ? '#FF0' : '#F26522';
+    c.fill();
+    if (b[2] > 0) b[2]--;
+  });
+  c.strokeStyle = '#FFF';
+  c.lineWidth = 6;
+  c.lineCap = 'round';
+  c.beginPath(); c.moveTo(28, FY + (pb.l ? 0 : 6)); c.lineTo(116, FY - (pb.l ? 14 : 0)); c.stroke();
+  c.beginPath(); c.moveTo(232, FY + (pb.r ? 0 : 6)); c.lineTo(144, FY - (pb.r ? 14 : 0)); c.stroke();
+  c.beginPath();
+  c.arc(pb.x, pb.y, 7, 0, 7);
+  c.fillStyle = '#EEE';
+  c.fill();
+  c.fillStyle = '#FFF';
+  c.font = 'bold 12px Tahoma';
+  c.fillText('Score: ' + pb.score, 8, 16);
+  c.fillText('Balls: ' + pb.balls, 195, 16);
+  c.font = '10px Tahoma';
+  c.fillText('\u2190 \u2192 flippers', 95, H - 8);
+  if (pb.over) {
+    c.font = 'bold 18px Tahoma';
+    c.fillText('GAME OVER', 78, 200);
+    c.font = '11px Tahoma';
+    c.fillText('click to play again', 85, 220);
+  }
+  if ($('pinballWindow').style.display === 'block') pbRAF = requestAnimationFrame(pbLoop);
+}
+$('pinballX').addEventListener('click', () => { $('pinballWindow').style.display = 'none'; });
+$('pinballCanvas').addEventListener('click', () => { if (pb && pb.over) pbReset(); });
+
+// Arrow keys: snake steering + pinball flippers
+document.addEventListener('keydown', e => {
+  if ($('snakeWindow').style.display === 'block' && snState && !snState.dead) {
+    const map = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -15, ArrowDown: 15 };
+    if (map[e.key] !== undefined) {
+      if (map[e.key] !== -snState.dir) snState.dir = map[e.key];
+      e.preventDefault();
+    }
+  }
+  if ($('pinballWindow').style.display === 'block' && pb) {
+    if (e.key === 'ArrowLeft') { pb.l = true; e.preventDefault(); }
+    if (e.key === 'ArrowRight') { pb.r = true; e.preventDefault(); }
+  }
+});
+document.addEventListener('keyup', e => {
+  if (pb) {
+    if (e.key === 'ArrowLeft') pb.l = false;
+    if (e.key === 'ArrowRight') pb.r = false;
+  }
+});
+
+// --- Touch controls: swipe to steer Snake, tap half-screen for Pinball flippers ---
+let snTouch = null;
+$('snakeCanvas').addEventListener('touchstart', e => {
+  snTouch = [e.touches[0].clientX, e.touches[0].clientY];
+}, { passive: true });
+$('snakeCanvas').addEventListener('touchend', e => {
+  if (!snState) return;
+  if (snState.dead) { snakeReset(); snTouch = null; return; }
+  if (!snTouch) return;
+  const dx = e.changedTouches[0].clientX - snTouch[0];
+  const dy = e.changedTouches[0].clientY - snTouch[1];
+  if (Math.abs(dx) < 10 && Math.abs(dy) < 10) { snTouch = null; return; }
+  const nd = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : -1) : (dy > 0 ? 15 : -15);
+  if (nd !== -snState.dir) snState.dir = nd;
+  snTouch = null;
+});
+$('pinballCanvas').addEventListener('touchstart', e => {
+  if (!pb) return;
+  const r = $('pinballCanvas').getBoundingClientRect();
+  for (const t of e.touches) {
+    if (t.clientX - r.left < r.width / 2) pb.l = true;
+    else pb.r = true;
+  }
+  e.preventDefault();
+}, { passive: false });
+$('pinballCanvas').addEventListener('touchend', () => {
+  if (pb) { pb.l = false; pb.r = false; }
+});
+
+// --- Fireworks on punch out ---
+function tada() {
+  playTones([[523, 0, 0.18], [659, 0.13, 0.18], [784, 0.26, 0.18], [1046, 0.4, 0.55]], 0.09);
+}
+function fireworks() {
+  const cv = document.createElement('canvas');
+  cv.className = 'cards-canvas';
+  cv.width = innerWidth;
+  cv.height = innerHeight;
+  document.body.appendChild(cv);
+  const c = cv.getContext('2d');
+  const COLS = ['#f87171', '#4ade80', '#38bdf8', '#facc15', '#c084fc', '#fff'];
+  let parts = [], launches = 6;
+  function boom(x, y) {
+    const col = COLS[Math.floor(Math.random() * COLS.length)];
+    for (let i = 0; i < 40; i++) {
+      const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 4;
+      parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 60 + Math.random() * 30, col });
+    }
+  }
+  const li = setInterval(() => {
+    boom(80 + Math.random() * (cv.width - 160), 80 + Math.random() * (cv.height * 0.5));
+    if (--launches <= 0) clearInterval(li);
+  }, 450);
+  function step() {
+    c.clearRect(0, 0, cv.width, cv.height);
+    parts.forEach(p => {
+      p.vy += 0.06;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.life--;
+      c.globalAlpha = Math.max(0, p.life / 90);
+      c.fillStyle = p.col;
+      c.fillRect(p.x, p.y, 3, 3);
+    });
+    c.globalAlpha = 1;
+    parts = parts.filter(p => p.life > 0);
+    if (parts.length || launches > 0) requestAnimationFrame(step);
+    else cv.remove();
+  }
+  step();
+}
+
+// --- Prestige ---
+const PRESTIGE_KEY = 'timetracker_prestige';
+let prestige = parseInt(lsGet(PRESTIGE_KEY) || '0', 10);
+function appTitleText() {
+  return prestige > 0 ? 'Office Time Tracker Professional Edition' : 'Office Time Tracker';
+}
+function applyPrestigeUi() {
+  document.querySelector('.title-text').textContent = appTitleText();
+  const av = document.querySelector('.profile-strip .avatar');
+  let star = av.querySelector('.star');
+  if (prestige > 0) {
+    if (!star) {
+      star = document.createElement('span');
+      star.className = 'star';
+      av.appendChild(star);
+    }
+    star.textContent = '\u2B50'.repeat(Math.min(3, prestige));
+  } else if (star) {
+    star.remove();
+  }
+}
+$('prestigeBtn').addEventListener('click', () => {
+  showConfirm('Prestige now? Your XP resets to zero and you gain a permanent \u2B50.', () => {
+    prestige++;
+    lsSet(PRESTIGE_KEY, String(prestige));
+    applyPrestigeUi();
+    renderXP();
+    tada();
+    showBalloon('\u2B50 PRESTIGE! Welcome to ' + appTitleText());
+  });
+});
+applyPrestigeUi();
+
+// --- CD loot box ---
+const CD_KEY = 'timetracker_cds';
+let cds = lsGetJSON(CD_KEY, {});
+const CD_ITEMS = [
+  ['Winamp', '\uD83E\uDD99'], ['Napster', '\uD83D\uDC31'], ['LimeWire', '\uD83C\uDF4B'],
+  ['MSN Messenger', '\uD83D\uDC65'], ['MS Paint', '\uD83C\uDFA8'], ['Encarta 2003', '\uD83D\uDCC0'],
+  ['WordArt', '\uD83C\uDF08'], ['Kazaa', '\uD83D\uDC9C'], ['ICQ', '\uD83C\uDF38'], ['Space Cadet', '\uD83C\uDFB1']
+];
+let lootPending = null;
+function showLoot() {
+  lootPending = CD_ITEMS[Math.floor(Math.random() * CD_ITEMS.length)];
+  $('lootResult').style.display = 'none';
+  $('lootCd').style.display = 'inline-block';
+  $('lootWin').style.display = 'block';
+}
+$('lootCd').addEventListener('click', () => {
+  if (!lootPending) return;
+  const name = lootPending[0], emo = lootPending[1];
+  cds[name] = (cds[name] || 0) + 1;
+  lsSet(CD_KEY, JSON.stringify(cds));
+  $('lootCd').style.display = 'none';
+  const r = $('lootResult');
+  r.textContent = emo + ' ' + name + (cds[name] === 1 ? ' \u2014 NEW!' : ' (x' + cds[name] + ')');
+  r.style.display = 'block';
+  lootPending = null;
+  tada();
+});
+$('lootX').addEventListener('click', () => { $('lootWin').style.display = 'none'; });
+$('smCds').addEventListener('click', () => {
+  closeStart();
+  const names = Object.keys(cds);
+  if (!names.length) return showInfo('Your CD binder is empty.\nFinish an 8-hour day to earn a CD-ROM!');
+  showInfo('Your CD collection:\n\n' + names.map(n => {
+    const item = CD_ITEMS.find(i => i[0] === n);
+    return (item ? item[1] + ' ' : '') + n + ' (x' + cds[n] + ')';
+  }).join('\n'));
+});
+$('smPinball').addEventListener('click', () => { closeStart(); openPinball(); });
+
+// --- Overtime punishment state ---
+const GO_HOME_LINES = [
+  'GO. HOME.',
+  'The office lights cost money, you know.',
+  'Your chair filed a complaint.',
+  'Overtime does not impress the printer.',
+  'Even the servers sleep more than you.'
+];
+let lastOtClippy = 0;
+let lastGlitch = Date.now();
+let glitchJitter = Math.random() * 240000;
+
+// --- Weekly summary (current week, Monday-based) ---
+function renderWeek() {
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+  let total = 0, net = 0, count = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+    const rec = history[dateKey(d)];
+    if (rec) {
+      total += rec.worked;
+      net += rec.worked - (rec.target || 480 * 60000);
+      count++;
+    }
+  }
+  $('wTotalVal').textContent = count ? fmtDurShort(total) : '-';
+  const netEl = $('wNetVal');
+  netEl.textContent = count ? (net >= 0 ? '+' : '') + fmtDurShort(net) : '-';
+  netEl.className = 'value ' + (count ? (net >= 0 ? 'pos' : 'neg') : '');
+
+  // Perfect Week: Mon-Fri all on target
+  let perfect = 0;
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+    const rec = history[dateKey(d)];
+    if (rec && rec.worked >= (rec.target || settings.targetMin * 60000) - 60000) perfect++;
+  }
+  if (perfect === 5) award('perfectweek');
+}
+
+// --- Control Panel (settings) ---
+let settingsSnapshot = null;
+function openSettings() {
+  settingsSnapshot = Object.assign({}, settings);
+  $('setName').value = currentUser;
+  $('setTarget').value = settings.targetMin / 60;
+  $('setSound').checked = settings.sound;
+  $('setVolume').value = settings.volume;
+  $('settingsWindow').style.display = 'block';
+}
+function cancelSettings() {
+  if (settingsSnapshot) settings = settingsSnapshot; // revert live previews
+  settingsSnapshot = null;
+  $('settingsWindow').style.display = 'none';
+}
+$('settingsX').addEventListener('click', cancelSettings);
+$('setCancel').addEventListener('click', cancelSettings);
+// Live preview: hear the volume while dragging the slider
+let lastPreview = 0;
+$('setVolume').addEventListener('input', () => {
+  settings.volume = Math.max(0, Math.min(100, +$('setVolume').value || 0));
+  settings.sound = $('setSound').checked;
+  if (Date.now() - lastPreview > 150) {
+    lastPreview = Date.now();
+    dingSound();
+  }
+});
+$('setSound').addEventListener('change', () => {
+  settings.sound = $('setSound').checked;
+  if (settings.sound) dingSound();
+});
+$('setSave').addEventListener('click', () => {
+  const t = parseFloat($('setTarget').value);
+  if (!isNaN(t) && t >= 1 && t <= 16) settings.targetMin = Math.round(t * 60);
+  settings.sound = $('setSound').checked;
+  settings.volume = Math.max(0, Math.min(100, +$('setVolume').value || 0));
+  settingsSnapshot = null;
+  saveSettings();
+  const newName = $('setName').value.trim();
+  if (newName && newName !== currentUser) renameUser(newName);
+  $('settingsWindow').style.display = 'none';
+  applyUserUi();
+  if (data) render(); else renderMonth();
+  showBalloon('Settings saved.');
+});
+
+// --- Winamp (plays chiptunes generated from your CD collection) ---
+let waIv = null;
+function waMelody(name) {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const scale = [262, 294, 330, 392, 440, 523, 587, 659];
+  const notes = [];
+  for (let i = 0; i < 8; i++) notes.push(scale[(h >> (i * 3)) & 7]);
+  return notes;
+}
+function waPlayTrack(name) {
+  waStop();
+  $('waDisplay').textContent = '\u25B6 ' + name + '.mp3 \u2014 128kbps \u2014 it really whips';
+  const notes = waMelody(name);
+  const bar = () => playTones(notes.map((f, i) => [f, i * 0.22, 0.18]), 0.05, 'square');
+  bar();
+  waIv = setInterval(bar, notes.length * 220);
+}
+function waStop() {
+  clearInterval(waIv);
+  waIv = null;
+  $('waDisplay').textContent = '*** WINAMP 2.95 ***';
+  document.querySelectorAll('.wa-item').forEach(el => el.classList.remove('playing'));
+}
+function openWinamp() {
+  const names = Object.keys(cds);
+  $('waList').innerHTML = names.length
+    ? names.map(n => '<div class="wa-item" data-cd="' + esc(n) + '">' + esc(n) + '.mp3</div>').join('')
+    : '<div style="padding:8px; color:#555">Playlist empty \u2014 finish your hours to earn CDs!</div>';
+  $('waList').querySelectorAll('.wa-item').forEach(el => el.addEventListener('click', () => {
+    waPlayTrack(el.dataset.cd);
+    $('waList').querySelectorAll('.wa-item').forEach(x => x.classList.toggle('playing', x === el));
+  }));
+  $('winampWindow').style.display = 'block';
+}
+$('waStopBtn').addEventListener('click', waStop);
+$('winampX').addEventListener('click', () => { waStop(); $('winampWindow').style.display = 'none'; });
+
+// --- MSN Messenger ---
+const MSN_BUDDIES = [
+  ['Dave', 'Online'], ['Priya', 'Online'], ['Sam', 'Away'],
+  ['IT Helpdesk', 'Busy'], ['xX_CoolGuy2003_Xx', 'Offline']
+];
+function openMsn() {
+  $('msnMe').textContent = '\uD83D\uDFE2 ' + currentUser + ' (Online)';
+  $('msnBuddies').innerHTML = MSN_BUDDIES.map((b, i) => {
+    const dot = b[1] === 'Online' ? '\uD83D\uDFE2' : b[1] === 'Away' ? '\uD83C\uDF19' : b[1] === 'Busy' ? '\uD83D\uDD34' : '\u26AA';
+    return '<div class="wa-item" data-i="' + i + '">' + dot + ' ' + esc(b[0]) + ' (' + b[1] + ')</div>';
+  }).join('');
+  $('msnBuddies').querySelectorAll('.wa-item').forEach(el => el.addEventListener('click', () => {
+    const b = MSN_BUDDIES[+el.dataset.i];
+    if (b[1] === 'Offline') return showInfo(b[0] + ' appears to be offline. Probably has a life.');
+    const msg = MSN_MSGS.find(m => m[0] === b[0]);
+    $('msnFrom').textContent = '\uD83D\uDFE2 ' + b[0] + ' says:';
+    $('msnText').textContent = msg ? msg[1] : 'brb, boss is coming';
+    const t = $('msnToast');
+    t.style.display = 'block';
+    nudgeSound();
+    clearTimeout(msnTimer);
+    msnTimer = setTimeout(() => { t.style.display = 'none'; }, 8000);
+  }));
+  $('msnWindow').style.display = 'block';
+}
+$('msnWinX').addEventListener('click', () => { $('msnWindow').style.display = 'none'; });
+$('msnNudgeBtn').addEventListener('click', () => {
+  const w = document.querySelector('.xp-window');
+  w.classList.remove('nudge');
+  void w.offsetWidth;
+  w.classList.add('nudge');
+  nudgeSound();
+});
+
+// --- Disk Defragmenter ---
+let dfIv = null;
+function openDefrag() {
+  clearInterval(dfIv);
+  const g = $('dfGrid');
+  g.innerHTML = '';
+  for (let i = 0; i < 300; i++) {
+    const b = document.createElement('i');
+    const r = Math.random();
+    b.dataset.f = r < 0.35 ? '1' : '0';
+    b.style.background = r < 0.35 ? '#C00000' : (r < 0.8 ? '#0046D5' : '#fff');
+    g.appendChild(b);
+  }
+  $('dfStatus').textContent = 'Analysis complete. Fragmentation level: your entire career.';
+  $('defragWindow').style.display = 'block';
+}
+$('defragX').addEventListener('click', () => { clearInterval(dfIv); $('defragWindow').style.display = 'none'; });
+$('dfStart').addEventListener('click', () => {
+  clearInterval(dfIv);
+  const blocks = [...$('dfGrid').children].filter(b => b.dataset.f === '1');
+  let done = 0;
+  $('dfStatus').textContent = 'Defragmenting work hours... 0%';
+  dfIv = setInterval(() => {
+    for (let k = 0; k < 3 && done < blocks.length; k++) {
+      blocks[done].style.background = '#0046D5';
+      blocks[done].dataset.f = '0';
+      done++;
+    }
+    const pct = blocks.length ? Math.round(done / blocks.length * 100) : 100;
+    $('dfStatus').textContent = 'Defragmenting work hours... ' + pct + '%';
+    if (done >= blocks.length) {
+      clearInterval(dfIv);
+      $('dfStatus').textContent = 'Defragmentation complete. Your work-life balance is still fragmented.';
+      dingSound();
+    }
+  }, 120);
+});
+
+// --- Formatting ---
+function fmtClock(d) {
+  let h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + m + ' ' + ampm;
+}
+function fmtDur(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return h + 'h ' + String(m).padStart(2, '0') + 'm ' + String(s).padStart(2, '0') + 's';
+}
+
+// --- History dashboard (modern fullscreen view) ---
+function openDashboard() {
+  buildDashboard();
+  $('dashSearch').value = '';
+  $('dashboard').style.display = 'block';
+  $('dashboard').scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+function closeDashboard() {
+  $('dashboard').style.display = 'none';
+  document.body.style.overflow = '';
+}
+$('dashBack').addEventListener('click', closeDashboard);
+$('dashSearch').addEventListener('input', () =>
+  buildDashTable($('dashSearch').value.trim().toLowerCase()));
+
+function buildDashboard() {
+  const defT = settings.targetMin * 60000;
+  const keys = Object.keys(history).sort();
+
+  // --- summary cards ---
+  let total = 0, net = 0, totalBreaks = 0, bestMs = 0, bestKey = null;
+  keys.forEach(k => {
+    const d = history[k];
+    total += d.worked;
+    net += d.worked - (d.target || defT);
+    totalBreaks += d.breaks || 0;
+    if (d.worked > bestMs) { bestMs = d.worked; bestKey = k; }
+  });
+  // current streak of weekdays on target
+  let streak = 0, guard = 0;
+  const sd = new Date();
+  while (guard++ < 1000) {
+    if (sd.getDay() !== 0 && sd.getDay() !== 6) {
+      const rec = history[dateKey(sd)];
+      if (!rec || rec.worked < (rec.target || defT) - 60000) break;
+      streak++;
+    }
+    sd.setDate(sd.getDate() - 1);
+  }
+  const cards = [
+    ['Total tracked', keys.length ? fmtDurShort(total) : '0h', keys.length + ' day' + (keys.length === 1 ? '' : 's')],
+    ['Average / day', keys.length ? fmtDurShort(total / keys.length) : '\u2014', 'target ' + fmtDurShort(defT)],
+    ['Net balance', (net >= 0 ? '+' : '') + fmtDurShort(net), net >= 0 ? 'ahead of target' : 'behind target', net >= 0 ? 'pos' : 'neg'],
+    ['Best day', bestKey ? fmtDurShort(bestMs) : '\u2014', bestKey || 'no data yet'],
+    ['Current streak', streak + ' day' + (streak === 1 ? '' : 's'), 'weekdays on target'],
+    ['Break time', fmtDurShort(totalBreaks), 'all recorded days']
+  ];
+  $('dashCards').innerHTML = cards.map(c =>
+    '<div class="dash-card"><div class="dc-label">' + c[0] + '</div>' +
+    '<div class="dc-value' + (c[3] ? ' ' + c[3] : '') + '">' + esc(c[1]) + '</div>' +
+    '<div class="dc-sub">' + esc(c[2]) + '</div></div>').join('');
+
+  // --- 12-month bar chart ---
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const pfx = m.getFullYear() + '-' + String(m.getMonth() + 1).padStart(2, '0');
+    const tot = keys.filter(k => k.startsWith(pfx)).reduce((s, k) => s + history[k].worked, 0);
+    months.push([m.toLocaleDateString(undefined, { month: 'short' }), tot, i === 0]);
+  }
+  const mx = Math.max(...months.map(m => m[1]), 1);
+  $('dashBars').innerHTML = months.map(([lab, tot, isNow]) =>
+    '<div class="db-col' + (isNow ? ' now' : '') + '" title="' + lab + ': ' + fmtDurShort(tot) + '">' +
+    '<div class="db-val">' + (tot ? Math.round(tot / 3600000) + 'h' : '') + '</div>' +
+    '<div class="db-bar" style="height:' + Math.max(2, tot / mx * 140) + 'px"></div>' +
+    '<div class="db-lab">' + lab + '</div></div>').join('');
+
+  // --- daily activity heatmap (last ~52 weeks, columns = weeks, rows = Mon-Sun) ---
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(start.getDate() - 364);
+  while ((start.getDay() + 6) % 7 !== 0) start.setDate(start.getDate() - 1); // back to Monday
+  let cells = '';
+  const cur = new Date(start);
+  while (cur <= end) {
+    const k = dateKey(cur);
+    const rec = history[k];
+    let lvl = 0;
+    if (rec) {
+      const r = rec.worked / (rec.target || defT);
+      lvl = r >= 1 ? 4 : r >= 0.75 ? 3 : r >= 0.5 ? 2 : 1;
+    }
+    cells += '<i' + (lvl ? ' class="hl' + lvl + '"' : '') + ' title="' + k +
+      (rec ? ' \u2014 ' + fmtDurShort(rec.worked) : '') + '"></i>';
+    cur.setDate(cur.getDate() + 1);
+  }
+  $('dashHeat').innerHTML = cells;
+  $('dashHeat').scrollLeft = $('dashHeat').scrollWidth;
+
+  buildDashTable('');
+}
+
+function buildDashTable(filter) {
+  const defT = settings.targetMin * 60000;
+  const todayKey = dateKey(new Date());
+  const keys = Object.keys(history).sort().reverse().filter(k => {
+    if (!filter) return true;
+    const note = (history[k].note || '').toLowerCase();
+    return k.includes(filter) || note.includes(filter);
+  });
+  if (!keys.length) {
+    $('dashTable').innerHTML = '<p class="db-empty">' +
+      (filter ? 'Nothing matches "' + esc(filter) + '".' : 'No days recorded yet \u2014 load some punch data first.') + '</p>';
+    return;
+  }
+  const groups = {};
+  keys.forEach(k => {
+    const g = k.slice(0, 7);
+    (groups[g] = groups[g] || []).push(k);
+  });
+  let html = '';
+  Object.keys(groups).sort().reverse().forEach(g => {
+    const ks = groups[g];
+    const tot = ks.reduce((s, k) => s + history[k].worked, 0);
+    const gnet = ks.reduce((s, k) => s + history[k].worked - (history[k].target || defT), 0);
+    const title = new Date(+g.slice(0, 4), +g.slice(5, 7) - 1, 1)
+      .toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    html += '<h3>' + title + ' <span>&#8212; ' + fmtDurShort(tot) + ' \u00B7 ' +
+      (gnet >= 0 ? '+' : '') + fmtDurShort(gnet) + '</span></h3>';
+    html += '<table><thead><tr><th>Date</th><th>Worked</th><th>Breaks</th><th>Net</th><th>Note</th></tr></thead><tbody>';
+    ks.forEach(k => {
+      const d = history[k];
+      const net = d.worked - (d.target || defT);
+      const dt = new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8));
+      const label = dt.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+      html += '<tr' + (k === todayKey ? ' class="db-today"' : '') + '>' +
+        '<td>' + label + '</td>' +
+        '<td>' + fmtDurShort(d.worked) + '</td>' +
+        '<td>' + fmtDurShort(d.breaks || 0) + '</td>' +
+        '<td class="' + (net >= 0 ? 'pos' : 'neg') + '">' + (net >= 0 ? '+' : '') + fmtDurShort(net) + '</td>' +
+        '<td class="db-note">' + (d.note ? esc(d.note) : '') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  });
+  $('dashTable').innerHTML = html;
+}
+
+// --- Window manager: drag, click-to-front, taskbar buttons ---
+const WIN_REGISTRY = [
+  ['mineWindow', '\uD83D\uDCA3 Minesweeper'],
+  ['snakeWindow', '\uD83D\uDC0D Snake'],
+  ['pinballWindow', '\uD83C\uDFB1 Pinball'],
+  ['winampWindow', '\uD83C\uDFB5 Winamp'],
+  ['msnWindow', '\uD83D\uDCAC Messenger'],
+  ['defragWindow', '\uD83D\uDDC4\uFE0F Defrag'],
+  ['settingsWindow', '\u2699\uFE0F Control Panel'],
+  ['achWindow', '\uD83C\uDFC6 Achievements'],
+  ['binWindow', '\uD83D\uDDD1\uFE0F Recycle Bin']
+];
+let zTop = 90, lastFocused = null;
+function focusWin(win) {
+  if (lastFocused === win) return;
+  lastFocused = win;
+  win.style.zIndex = ++zTop;
+}
+function makeDraggable(win) {
+  const bar = win.querySelector('.title-bar');
+  if (!bar) return;
+  bar.style.cursor = 'move';
+  function beginDrag(cx, cy) {
+    const r = win.getBoundingClientRect();
+    win.style.transform = 'none';
+    win.style.left = r.left + 'px';
+    win.style.top = r.top + 'px';
+    return [cx - r.left, cy - r.top];
+  }
+  bar.addEventListener('mousedown', e => {
+    if (e.target.closest('.tbtn')) return;
+    const [offX, offY] = beginDrag(e.clientX, e.clientY);
+    const move = ev => {
+      win.style.left = (ev.clientX - offX) + 'px';
+      win.style.top = Math.max(0, ev.clientY - offY) + 'px';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+    e.preventDefault();
+  });
+  bar.addEventListener('touchstart', e => {
+    if (e.target.closest('.tbtn')) return;
+    const t = e.touches[0];
+    const [offX, offY] = beginDrag(t.clientX, t.clientY);
+    const move = ev => {
+      const tt = ev.touches[0];
+      win.style.left = (tt.clientX - offX) + 'px';
+      win.style.top = Math.max(0, tt.clientY - offY) + 'px';
+      ev.preventDefault();
+    };
+    const end = () => {
+      document.removeEventListener('touchmove', move);
+      document.removeEventListener('touchend', end);
+    };
+    document.addEventListener('touchmove', move, { passive: false });
+    document.addEventListener('touchend', end);
+  }, { passive: true });
+}
+function updateTaskbar() {
+  const c = $('taskOpen');
+  c.innerHTML = WIN_REGISTRY.map(([id, label]) => {
+    const w = $(id);
+    if (w.style.display !== 'block' && w.dataset.min !== '1') return '';
+    return '<div class="task-item task-btn' + (w.dataset.min === '1' ? ' min' : '') +
+      '" data-win="' + id + '">' + label + '</div>';
+  }).join('');
+  c.querySelectorAll('.task-btn').forEach(el =>
+    el.addEventListener('click', () => toggleWin(el.dataset.win)));
+}
+function toggleWin(id) {
+  const w = $(id);
+  if (w.style.display === 'block') {
+    // minimize (keep the taskbar button)
+    w.dataset.min = '1';
+    w.style.display = 'none';
+    if (id === 'snakeWindow') clearInterval(snIv);
+  } else {
+    // restore
+    w.dataset.min = '';
+    w.style.display = 'block';
+    if (id === 'snakeWindow' && snState && !snState.dead) {
+      clearInterval(snIv);
+      snIv = setInterval(snTick, 130);
+    }
+    if (id === 'pinballWindow' && pb) {
+      cancelAnimationFrame(pbRAF);
+      pbLoop();
+    }
+    focusWin(w);
+  }
+  updateTaskbar();
+}
+WIN_REGISTRY.forEach(([id]) => {
+  const win = $(id);
+  makeDraggable(win);
+  win.addEventListener('mousedown', () => focusWin(win));
+  // React to open/close from anywhere (open fns, X buttons, Esc)
+  let lastDisp = win.style.display;
+  new MutationObserver(() => {
+    if (win.style.display === lastDisp) return;
+    lastDisp = win.style.display;
+    if (lastDisp === 'block') focusWin(win);
+    else if (win.dataset.min !== '1') win.dataset.min = ''; // closed for real
+    updateTaskbar();
+  }).observe(win, { attributes: true, attributeFilter: ['style'] });
+});
+makeDraggable($('lootWin'));
+
+// Pause the Snake loop while the tab is hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    if (snIv) { clearInterval(snIv); snIv = null; }
+  } else if (snState && !snState.dead && $('snakeWindow').style.display === 'block') {
+    snIv = setInterval(snTick, 130);
+  }
+});
+
+// --- Init: build the login screen and restore the last user's data ---
+renderLogin();
+loadUserState();
+
+// --- PWA: service worker (only works over http(s); silently skipped for file://) ---
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  navigator.serviceWorker.register('sw.js').catch(() => { /* not fatal */ });
+}
+</script>
+</body>
+</html>
