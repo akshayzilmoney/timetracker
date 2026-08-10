@@ -1392,7 +1392,8 @@
     <div class="sm-item" id="smBackup">&#128190; Backup All Data</div>
     <div class="sm-item" id="smRestore">&#128194; Restore Backup</div>
     <div class="sm-sep"></div>
-    <div class="sm-item" id="smLogoff">&#128100; Log Off</div>
+    <div class="sm-item" id="smAddUser">&#128101; Add User&hellip;</div>
+    <div class="sm-item" id="smLogoff">&#128100; Log Off / Switch User</div>
     <div class="sm-item" id="smShut">&#9211; Turn Off Computer</div>
   </div>
 </div>
@@ -2457,6 +2458,22 @@ $('smRestore').addEventListener('click', () => { closeStart(); $('restoreInput')
 $('restoreInput').addEventListener('change', e => {
   if (e.target.files[0]) restoreBackup(e.target.files[0]);
   e.target.value = '';
+});
+$('smAddUser').addEventListener('click', () => {
+  closeStart();
+  showPrompt('New user name:', '', name => {
+    name = name.trim();
+    if (!name) return;
+    if (users.includes(name)) return showError('That user already exists.');
+    users.push(name);
+    localStorage.setItem('timetracker_users', JSON.stringify(users));
+    renderLogin();
+    showConfirm('User "' + name + '" created. Switch to that profile now?', () => {
+      waStop();
+      loggedIn = false;
+      login(name);
+    });
+  });
 });
 $('smLogoff').addEventListener('click', () => {
   closeStart();
