@@ -938,11 +938,51 @@
   #ctxMenu .cm-item.disabled { color: #999; }
   #ctxMenu .cm-item.disabled:hover { background: none; color: #999; }
   #ctxMenu .cm-sep { height: 1px; background: #D0D0BF; margin: 3px 2px; }
-  .folder-body { width: 380px; height: 210px; background: #fff; padding: 20px; color: #555; overflow: auto; }
+  .folder-body { width: 380px; height: 190px; background: #fff; padding: 8px; overflow: auto; }
   .flicker { animation: deskFlick .15s; }
   @keyframes deskFlick { 50% { opacity: 0.35; } }
   .task-item.main-task { cursor: pointer; }
   .task-item.main-task:hover { filter: brightness(1.12); }
+
+  /* --- folder contents + notepad + paint + task manager --- */
+  .np-tools, .pt-tools, .folder-tools {
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+    padding: 6px 8px;
+    border-bottom: 1px solid #ACA899;
+    background: #ECE9D8;
+  }
+  .np-tools button, .pt-tools button, .folder-tools button { min-width: 0; padding: 3px 10px; }
+  .ficon { display: flex; gap: 8px; align-items: center; padding: 4px 8px; cursor: default; user-select: none; }
+  .ficon:hover { background: #E8F0FB; }
+  #npText {
+    display: block; width: 420px; height: 250px;
+    margin: 0; border: none; resize: none;
+    font-family: "Lucida Console", "Courier New", monospace;
+    background: #fff;
+  }
+  .pt-swatch { width: 18px; height: 18px; border: 1px solid #333; cursor: pointer; display: inline-block; }
+  .pt-swatch.sel { outline: 2px solid #316AC5; }
+  #paintCanvas { display: block; background: #fff; margin: 0; cursor: crosshair; touch-action: none; }
+  .tm-body { padding: 8px; width: 340px; }
+  .tm-sec { font-weight: bold; color: #0046D5; margin: 6px 0 4px; }
+  .tm-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid #EDEDED;
+    padding: 3px 6px; margin-bottom: 2px;
+  }
+  .tm-row button { min-width: 0; padding: 1px 8px; font-size: 10px; }
+  .tm-foot { border-top: 1px solid #ACA899; margin-top: 8px; padding-top: 5px; color: #444; }
+
+  /* --- wallpapers + color schemes (Display Properties) --- */
+  body.wp-azul { background: linear-gradient(180deg, #0763AF 0%, #3E92DD 45%, #7DB9E8 70%, #0B4F8F 100%) fixed; }
+  body.wp-autumn { background: linear-gradient(180deg, #8C3B0F 0%, #C96A1E 40%, #E8A33D 65%, #5C2E0D 100%) fixed; }
+  body.wp-midnight { background: linear-gradient(180deg, #05070d 0%, #101a33 60%, #1a2747 100%) fixed; }
+  body.th-olive .title-bar { background: linear-gradient(180deg, #9CB86B 0%, #7A9A4E 8%, #748F4B 40%, #82A45B 88%, #5C7A3A 93%, #4E692F 100%); }
+  body.th-olive .taskbar { background: linear-gradient(180deg, #A5BE78 0%, #7A9A4E 8%, #71904A 60%, #54702F 100%); }
+  body.th-olive .tbtn:not(.close) { background: linear-gradient(180deg, #C2D8A0 0%, #7FA352 50%, #68893D 100%); }
+  body.th-silver .title-bar { background: linear-gradient(180deg, #E8E8E8 0%, #B8B8C8 8%, #A8A8B8 40%, #C0C0D0 88%, #9090A0 100%); color: #222; text-shadow: none; }
+  body.th-silver .taskbar { background: linear-gradient(180deg, #D8D8E0 0%, #B0B0C0 8%, #A0A0B0 60%, #808090 100%); }
+  body.th-silver .tbtn:not(.close) { background: linear-gradient(180deg, #F0F0F0 0%, #C0C0D0 50%, #A0A0B0 100%); color: #222; }
 
   /* --- multi-user login --- */
   #loginAccts { display: flex; flex-direction: column; gap: 6px; max-height: 72vh; overflow: auto; }
@@ -1157,8 +1197,12 @@
     margin-top: 2px;
   }
 
-  /* --- per-day detail modal --- */
-  #dayModal {
+  /* --- absence (holiday/sick) day styling --- */
+  .hlA { background: #0ea5e9 !important; }
+  .cal-cell.off { background: rgba(56,189,248,0.10); border-color: #155e75; }
+
+  /* --- per-day detail + day editor modals --- */
+  #dayModal, #editModal {
     display: none;
     position: fixed; inset: 0;
     z-index: 1500;
@@ -1167,6 +1211,20 @@
     justify-content: center;
     padding: 16px;
   }
+  .em-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .em-row label { color: #94a3b8; font-size: 12px; }
+  .em-row input, .em-row select {
+    background: #16213b;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 13px;
+    outline: none;
+    width: 180px;
+    color-scheme: dark;
+  }
+  .em-row input:focus, .em-row select:focus { border-color: #38bdf8; }
   .day-card {
     background: #1e293b;
     border: 1px solid #334155;
@@ -1452,6 +1510,9 @@
     <div class="sm-item" id="smWinamp">&#127925; Winamp</div>
     <div class="sm-item" id="smMsn">&#128172; MSN Messenger</div>
     <div class="sm-item" id="smDefrag">&#128451;&#65039; Disk Defragmenter</div>
+    <div class="sm-item" id="smNotepad">&#128196; Notepad</div>
+    <div class="sm-item" id="smPaint">&#127912; Paint</div>
+    <div class="sm-item" id="smTaskmgr">&#128203; Task Manager</div>
     <div class="sm-item" id="smCds">&#128191; My CD Collection</div>
     <div class="sm-item" id="smRun">&#9654; Run...</div>
     <div class="sm-sep"></div>
@@ -1584,7 +1645,10 @@
       <div class="heat-legend">Less <i></i><i class="hl1"></i><i class="hl2"></i><i class="hl3"></i><i class="hl4"></i> More</div>
     </div>
     <div class="dash-panel">
-      <h2>All days</h2>
+      <div class="dash-cal-head">
+        <h2>All days</h2>
+        <button class="dash-btn" id="dashAddDay">+ Add / Edit Day</button>
+      </div>
       <div id="dashTable"></div>
     </div>
   </div>
@@ -1593,7 +1657,10 @@
     <div class="day-card">
       <div class="dm-head">
         <h3 id="dmTitle"></h3>
-        <button class="dash-btn" id="dmClose">&#10005;</button>
+        <span>
+          <button class="dash-btn" id="dmEdit">Edit</button>
+          <button class="dash-btn" id="dmClose">&#10005;</button>
+        </span>
       </div>
       <div class="dm-stats" id="dmStats"></div>
       <h4>Punch Sessions</h4>
@@ -1605,6 +1672,28 @@
       </div>
     </div>
   </div>
+
+  <div id="editModal">
+    <div class="day-card">
+      <div class="dm-head">
+        <h3>Add / Edit Day</h3>
+        <button class="dash-btn" id="emClose">&#10005;</button>
+      </div>
+      <div class="em-row"><label>Date</label><input id="emDate" type="date"></div>
+      <div class="em-row"><label>Type</label>
+        <select id="emKind">
+          <option value="">Worked</option>
+          <option value="holiday">&#127958;&#65039; Holiday / Leave</option>
+          <option value="sick">&#129298; Sick day</option>
+        </select>
+      </div>
+      <div class="em-row" id="emWorkRow"><label>Worked (hours)</label><input id="emWorked" type="number" min="0" max="24" step="0.25"></div>
+      <div class="em-row" id="emBreakRow"><label>Breaks (hours)</label><input id="emBreaks" type="number" min="0" max="12" step="0.25"></div>
+      <div class="em-row"><label>Note</label><input id="emNote" maxlength="120"></div>
+      <div class="set-actions"><button class="dash-btn" id="emSave">Save Day</button></div>
+      <div class="db-empty" id="emHint" style="padding:8px 0 0"></div>
+    </div>
+  </div>
 </div>
 
 <div id="ctxMenu"></div>
@@ -1614,10 +1703,68 @@
     <span class="title-text" id="folderTitle">Folder</span>
     <span class="title-buttons"><span class="tbtn close" id="folderX">&#10005;</span></span>
   </div>
-  <div class="folder-body">
-    <div>This folder is empty.</div>
-    <div class="muted" style="text-align:left; padding-top:10px">0 objects &#183; 0 bytes</div>
+  <div class="folder-tools">
+    <button id="fNewTxt">&#128196; New Text Doc</button>
+    <button id="fNewBmp">&#127912; New Drawing</button>
+    <button id="fPaste">Paste</button>
   </div>
+  <div class="folder-body" id="folderBody"></div>
+</div>
+
+<div id="notepadWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text" id="npTitle">Untitled - Notepad</span>
+    <span class="title-buttons"><span class="tbtn close" id="npX">&#10005;</span></span>
+  </div>
+  <div class="np-tools">
+    <button id="npSave">Save</button>
+    <button id="npSaveAs">Save As&hellip;</button>
+  </div>
+  <textarea id="npText" spellcheck="false"></textarea>
+</div>
+
+<div id="paintWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text" id="ptTitle">untitled - Paint</span>
+    <span class="title-buttons"><span class="tbtn close" id="ptX">&#10005;</span></span>
+  </div>
+  <div class="pt-tools">
+    <span class="pt-swatch sel" data-c="#000000" style="background:#000"></span>
+    <span class="pt-swatch" data-c="#7F7F7F" style="background:#7F7F7F"></span>
+    <span class="pt-swatch" data-c="#C00000" style="background:#C00000"></span>
+    <span class="pt-swatch" data-c="#F26522" style="background:#F26522"></span>
+    <span class="pt-swatch" data-c="#FFC20E" style="background:#FFC20E"></span>
+    <span class="pt-swatch" data-c="#008000" style="background:#008000"></span>
+    <span class="pt-swatch" data-c="#0046D5" style="background:#0046D5"></span>
+    <span class="pt-swatch" data-c="#92278F" style="background:#92278F"></span>
+    <button id="ptEraser">Eraser</button>
+    <button id="ptClear">Clear</button>
+    <button id="ptSave">Save</button>
+    <button id="ptSaveAs">Save As&hellip;</button>
+  </div>
+  <canvas id="paintCanvas" width="420" height="260"></canvas>
+</div>
+
+<div id="taskmgrWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">Windows Task Manager</span>
+    <span class="title-buttons"><span class="tbtn close" id="taskmgrX">&#10005;</span></span>
+  </div>
+  <div class="tm-body">
+    <div class="tm-sec">Applications</div>
+    <div id="tmApps"></div>
+    <div class="tm-sec">Processes</div>
+    <div id="tmProcs"></div>
+    <div class="tm-foot" id="tmFoot"></div>
+  </div>
+</div>
+
+<div id="dispWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">Display Properties</span>
+    <span class="title-buttons"><span class="tbtn close" id="dispX">&#10005;</span></span>
+  </div>
+  <div class="panel-body" id="dispBody"></div>
 </div>
 
 <div id="setupWindow">
@@ -1826,6 +1973,10 @@ function saveDayToHistory(dayKey, workedMs, breakMs, targetMs, sessions) {
   else if (prev.sessions) history[dayKey].sessions = prev.sessions;
   lsSet(HISTORY_KEY, JSON.stringify(history));
 }
+
+// Absence days (holiday/sick) never count against streaks, averages or targets
+function isAbsence(rec) { return !!(rec && (rec.kind === 'holiday' || rec.kind === 'sick')); }
+function kindLabel(rec) { return rec.kind === 'holiday' ? '\uD83C\uDFD6\uFE0F Holiday' : '\uD83E\uDD12 Sick'; }
 
 // If another tab updates the history, pick it up live
 window.addEventListener('storage', e => {
@@ -2280,21 +2431,29 @@ function renderMonth() {
     .filter(k => k.startsWith(prefix))
     .sort();
 
-  let totalWorked = 0, totalNet = 0;
+  let totalWorked = 0, totalNet = 0, workedDays = 0;
   const todayKey = dateKey(new Date());
   const rows = days.map(k => {
     const d = history[k];
+    const dayNum = parseInt(k.slice(8), 10);
+    const label = new Date(y, mo, dayNum).toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + dayNum;
+    const noteCell = '<td class="notecell" title="' + (d.note ? esc(d.note) : 'Add a note') + '">' + (d.note ? '\uD83D\uDCDD' : '\u270E') + '</td>';
+    if (isAbsence(d)) {
+      return '<tr class="mrow" data-day="' + k + '">' +
+        '<td' + (k === todayKey ? ' class="day-today"' : '') + '>' + label + '</td>' +
+        '<td colspan="2">' + kindLabel(d) + '</td>' +
+        '<td class="muted">\u2014</td>' + noteCell + '</tr>';
+    }
     const net = d.worked - (d.target || settings.targetMin * 60000);
     totalWorked += d.worked;
     totalNet += net;
-    const dayNum = parseInt(k.slice(8), 10);
-    const label = new Date(y, mo, dayNum).toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + dayNum;
+    workedDays++;
     return '<tr class="mrow" data-day="' + k + '">' +
       '<td' + (k === todayKey ? ' class="day-today"' : '') + '>' + label + '</td>' +
       '<td>' + fmtDurShort(d.worked) + '</td>' +
       '<td>' + fmtDurShort(d.breaks || 0) + '</td>' +
       '<td class="' + (net >= 0 ? 'pos' : 'neg') + '">' + (net >= 0 ? '+' : '') + fmtDurShort(net) + '</td>' +
-      '<td class="notecell" title="' + (d.note ? esc(d.note) : 'Add a note') + '">' + (d.note ? '\uD83D\uDCDD' : '\u270E') + '</td></tr>';
+      noteCell + '</tr>';
   });
 
   $('monthBody').innerHTML = rows.join('');
@@ -2303,11 +2462,11 @@ function renderMonth() {
   });
   drawMonthChart(y, mo, prefix);
   $('monthEmpty').style.display = days.length ? 'none' : 'block';
-  $('mTotalVal').textContent = days.length ? fmtDurShort(totalWorked) : '-';
-  $('mAvgVal').textContent = days.length ? fmtDurShort(totalWorked / days.length) : '-';
+  $('mTotalVal').textContent = workedDays ? fmtDurShort(totalWorked) : '-';
+  $('mAvgVal').textContent = workedDays ? fmtDurShort(totalWorked / workedDays) : '-';
   const netEl = $('mNetVal');
-  netEl.textContent = days.length ? (totalNet >= 0 ? '+' : '') + fmtDurShort(totalNet) : '-';
-  netEl.className = 'value ' + (days.length ? (totalNet >= 0 ? 'pos' : 'neg') : '');
+  netEl.textContent = workedDays ? (totalNet >= 0 ? '+' : '') + fmtDurShort(totalNet) : '-';
+  netEl.className = 'value ' + (workedDays ? (totalNet >= 0 ? 'pos' : 'neg') : '');
 
   // Month-based achievements (only judged on the current month)
   if (prefix === dateKey(new Date()).slice(0, 7)) {
@@ -2351,6 +2510,11 @@ function drawMonthChart(y, mo, prefix) {
   for (let d = 1; d <= dim; d++) {
     const rec = history[prefix + '-' + String(d).padStart(2, '0')];
     if (!rec) continue;
+    if (isAbsence(rec)) {
+      c.fillStyle = '#38bdf8';
+      c.fillRect((d - 1) * bw + 1, h - 18, Math.max(2, bw - 2), 6);
+      continue;
+    }
     const bh = rec.worked / maxMs * (h - 14);
     const tgt = rec.target || defTarget;
     c.fillStyle = rec.worked >= tgt ? '#2FB833' : '#C00000';
@@ -2422,59 +2586,125 @@ document.body.addEventListener('click', e => {
   }
 });
 
-// --- Real desktop: user folders + right-click context menu + refresh ---
+// --- Real desktop: items (folders + files), icon dragging, clipboard ---
 const DESKTOP_KEY = 'timetracker_desktop';
-let deskFolders = [];
-try { deskFolders = JSON.parse(localStorage.getItem(DESKTOP_KEY)) || []; } catch (e) { deskFolders = []; }
-function saveDesk() { localStorage.setItem(DESKTOP_KEY, JSON.stringify(deskFolders)); }
+const ICONPOS_KEY = 'timetracker_iconpos';
+const TYPE_ICO = { folder: '\uD83D\uDCC1', txt: '\uD83D\uDCC4', bmp: '\uD83C\uDFA8' };
+let deskItems = [];
+try { deskItems = JSON.parse(localStorage.getItem(DESKTOP_KEY)) || []; } catch (e) { deskItems = []; }
+// migrate pre-file-support folders and guarantee ids
+deskItems = deskItems.map(it => Object.assign({ id: 'i' + Math.random().toString(36).slice(2, 9), type: 'folder' }, it));
+deskItems.forEach(it => { if (it.type === 'folder' && !it.files) it.files = []; });
+let iconPos = {};
+try { iconPos = JSON.parse(localStorage.getItem(ICONPOS_KEY)) || {}; } catch (e) { iconPos = {}; }
+let deskClip = null; // {itemId} (desktop item) or {folderId, fileId} (file inside a folder)
 
-function renderDeskFolders() {
+function saveDesk() { localStorage.setItem(DESKTOP_KEY, JSON.stringify(deskItems)); }
+function saveIconPos() { localStorage.setItem(ICONPOS_KEY, JSON.stringify(iconPos)); }
+function findItem(id) { return deskItems.find(it => it.id === id); }
+
+// icons remember where you drop them; click/dblclick still work via a move threshold
+function makeIconDraggable(el, key) {
+  const p = iconPos[key];
+  if (p) {
+    el.style.position = 'fixed';
+    el.style.left = p[0] + 'px';
+    el.style.top = p[1] + 'px';
+  }
+  el.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    const sx = e.clientX, sy = e.clientY;
+    const r = el.getBoundingClientRect();
+    let dragging = false;
+    const move = ev => {
+      if (!dragging && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
+      dragging = true;
+      el.style.position = 'fixed';
+      el.style.left = (r.left + ev.clientX - sx) + 'px';
+      el.style.top = Math.max(0, r.top + ev.clientY - sy) + 'px';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      if (dragging) {
+        iconPos[key] = [parseInt(el.style.left, 10) || 0, parseInt(el.style.top, 10) || 0];
+        saveIconPos();
+        el.dataset.dragged = '1';
+        setTimeout(() => { delete el.dataset.dragged; }, 250);
+      }
+    };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+  el.addEventListener('click', e => {
+    if (el.dataset.dragged) { e.stopPropagation(); }
+  }, true);
+}
+// system icons get stable position keys
+document.querySelectorAll('.desktop-icons > .dicon').forEach((el, i) => makeIconDraggable(el, 'sys' + i));
+
+function renderDeskItems() {
   document.querySelectorAll('.dicon.userfolder').forEach(el => el.remove());
   const cont = document.querySelector('.desktop-icons');
-  deskFolders.forEach((f, i) => {
+  deskItems.forEach(it => {
     const d = document.createElement('div');
     d.className = 'dicon userfolder';
-    d.dataset.folder = i;
-    d.innerHTML = '<div class="di-img">\uD83D\uDCC1</div><div class="di-label">' + esc(f.name) + '</div>';
+    d.dataset.item = it.id;
+    d.innerHTML = '<div class="di-img">' + TYPE_ICO[it.type] + '</div><div class="di-label">' + esc(it.name) + '</div>';
     d.addEventListener('click', () => {
       document.querySelectorAll('.dicon').forEach(x => x.classList.remove('selected'));
       d.classList.add('selected');
     });
-    d.addEventListener('dblclick', () => openFolder(i));
+    d.addEventListener('dblclick', () => openDeskItem(it.id));
+    makeIconDraggable(d, it.id);
     cont.appendChild(d);
   });
 }
-function openFolder(i) {
-  if (!deskFolders[i]) return;
-  $('folderTitle').textContent = deskFolders[i].name;
-  $('folderWindow').style.display = 'block';
+function openDeskItem(id) {
+  const it = findItem(id);
+  if (!it) return;
+  if (it.type === 'folder') openFolder(id);
+  else if (it.type === 'txt') openNotepad({ where: 'desk', id: id });
+  else openPaint({ where: 'desk', id: id });
 }
-$('folderX').addEventListener('click', () => { $('folderWindow').style.display = 'none'; });
-
-function newFolder() {
-  let name = 'New Folder', k = 2;
-  while (deskFolders.some(f => f.name === name)) name = 'New Folder (' + k++ + ')';
-  deskFolders.push({ name: name });
-  saveDesk();
-  renderDeskFolders();
-  renameFolder(deskFolders.length - 1); // XP lets you name it right away
-}
-function renameFolder(i) {
-  if (!deskFolders[i]) return;
-  showPrompt('Folder name:', deskFolders[i].name, name => {
+function newDeskItem(type, defName, x, y) {
+  showPrompt(type === 'folder' ? 'Folder name:' : 'File name:', defName, name => {
     name = name.trim();
     if (!name) return;
-    deskFolders[i].name = name;
+    const it = { id: 'i' + Math.random().toString(36).slice(2, 9), type: type, name: name };
+    if (type === 'folder') it.files = [];
+    if (type === 'txt') it.content = '';
+    deskItems.push(it);
+    if (x !== undefined) {
+      iconPos[it.id] = [x, y];
+      saveIconPos();
+    }
     saveDesk();
-    renderDeskFolders();
+    renderDeskItems();
+    if (type === 'txt') openNotepad({ where: 'desk', id: it.id });
+    if (type === 'bmp') openPaint({ where: 'desk', id: it.id });
   });
 }
-function deleteFolder(i) {
-  if (!deskFolders[i]) return;
-  showConfirm('Are you sure you want to send "' + deskFolders[i].name + '" to the Recycle Bin?', () => {
-    deskFolders.splice(i, 1);
+function renameDeskItem(id) {
+  const it = findItem(id);
+  if (!it) return;
+  showPrompt('New name:', it.name, name => {
+    name = name.trim();
+    if (!name) return;
+    it.name = name;
     saveDesk();
-    renderDeskFolders();
+    renderDeskItems();
+  });
+}
+function deleteDeskItem(id) {
+  const it = findItem(id);
+  if (!it) return;
+  showConfirm('Are you sure you want to send "' + it.name + '" to the Recycle Bin?', () => {
+    deskItems = deskItems.filter(x => x.id !== id);
+    delete iconPos[id];
+    saveDesk();
+    saveIconPos();
+    renderDeskItems();
   });
 }
 function deskRefresh() {
@@ -2483,8 +2713,357 @@ function deskRefresh() {
   d.classList.remove('flicker');
   void d.offsetWidth;
   d.classList.add('flicker');
-  renderDeskFolders();
+  renderDeskItems();
 }
+
+// clipboard: Cut anywhere, Paste on the desktop or inside a folder
+function takeClip() {
+  if (!deskClip) return null;
+  let moved = null;
+  if (deskClip.itemId) {
+    moved = findItem(deskClip.itemId);
+    if (moved) deskItems = deskItems.filter(x => x.id !== moved.id);
+  } else {
+    const f = findItem(deskClip.folderId);
+    moved = f && f.files.find(x => x.id === deskClip.fileId);
+    if (moved) f.files = f.files.filter(x => x.id !== moved.id);
+  }
+  deskClip = null;
+  return moved;
+}
+function pasteDesktop(x, y) {
+  const moved = takeClip();
+  if (!moved) return;
+  deskItems.push(moved);
+  if (x !== undefined) {
+    iconPos[moved.id] = [x, y];
+    saveIconPos();
+  }
+  saveDesk();
+  renderDeskItems();
+  if (folderOpenId) renderFolder();
+}
+function pasteInto(folderId) {
+  if (!deskClip) return;
+  if (deskClip.itemId) {
+    const it = findItem(deskClip.itemId);
+    if (it && it.type === 'folder') return showError('A folder cannot be moved into another folder.');
+    if (deskClip.itemId && findItem(folderId) && folderId === deskClip.itemId) return;
+  }
+  if (deskClip.folderId === folderId) { deskClip = null; return; }
+  const moved = takeClip();
+  if (!moved) return;
+  findItem(folderId).files.push(moved);
+  saveDesk();
+  renderFolder();
+  renderDeskItems();
+}
+
+// --- Folder (Explorer) window ---
+let folderOpenId = null;
+function openFolder(id) {
+  folderOpenId = id;
+  renderFolder();
+  $('folderWindow').style.display = 'block';
+}
+function renderFolder() {
+  const f = findItem(folderOpenId);
+  if (!f) { $('folderWindow').style.display = 'none'; return; }
+  $('folderTitle').textContent = f.name;
+  $('folderBody').innerHTML = f.files.length
+    ? f.files.map(file => '<div class="ficon" data-f="' + file.id + '"><span>' + TYPE_ICO[file.type] + '</span> ' + esc(file.name) + '</div>').join('')
+    : '<div style="color:#555; padding:10px">This folder is empty.</div>';
+  $('folderBody').querySelectorAll('.ficon').forEach(el => {
+    const fid = el.dataset.f;
+    el.addEventListener('dblclick', () => openFolderFile(folderOpenId, fid));
+    el.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const capturedFolder = folderOpenId;
+      showCtx([
+        { label: '<b>Open</b>', fn: () => openFolderFile(capturedFolder, fid) },
+        { label: 'Cut', fn: () => { deskClip = { folderId: capturedFolder, fileId: fid }; } },
+        '-',
+        { label: 'Rename', fn: () => renameFolderFile(capturedFolder, fid) },
+        { label: 'Delete', fn: () => deleteFolderFile(capturedFolder, fid) }
+      ], e.clientX, e.clientY);
+    });
+  });
+}
+function getFile(folderId, fileId) {
+  const f = findItem(folderId);
+  return f && f.files.find(x => x.id === fileId);
+}
+function openFolderFile(folderId, fileId) {
+  const file = getFile(folderId, fileId);
+  if (!file) return;
+  if (file.type === 'txt') openNotepad({ where: 'folder', folderId: folderId, fileId: fileId });
+  else openPaint({ where: 'folder', folderId: folderId, fileId: fileId });
+}
+function renameFolderFile(folderId, fileId) {
+  const file = getFile(folderId, fileId);
+  if (!file) return;
+  showPrompt('File name:', file.name, name => {
+    name = name.trim();
+    if (!name) return;
+    file.name = name;
+    saveDesk();
+    renderFolder();
+  });
+}
+function deleteFolderFile(folderId, fileId) {
+  const file = getFile(folderId, fileId);
+  if (!file) return;
+  showConfirm('Delete "' + file.name + '"?', () => {
+    const f = findItem(folderId);
+    f.files = f.files.filter(x => x.id !== fileId);
+    saveDesk();
+    renderFolder();
+  });
+}
+$('folderX').addEventListener('click', () => { $('folderWindow').style.display = 'none'; });
+$('fNewTxt').addEventListener('click', () => {
+  if (!folderOpenId) return;
+  const fid = folderOpenId;
+  showPrompt('File name:', 'New Text Document.txt', name => {
+    name = name.trim();
+    if (!name) return;
+    const file = { id: 'f' + Math.random().toString(36).slice(2, 9), type: 'txt', name: name, content: '' };
+    findItem(fid).files.push(file);
+    saveDesk();
+    renderFolder();
+    openNotepad({ where: 'folder', folderId: fid, fileId: file.id });
+  });
+});
+$('fNewBmp').addEventListener('click', () => {
+  if (!folderOpenId) return;
+  const fid = folderOpenId;
+  showPrompt('File name:', 'Untitled.bmp', name => {
+    name = name.trim();
+    if (!name) return;
+    const file = { id: 'f' + Math.random().toString(36).slice(2, 9), type: 'bmp', name: name, data: null };
+    findItem(fid).files.push(file);
+    saveDesk();
+    renderFolder();
+    openPaint({ where: 'folder', folderId: fid, fileId: file.id });
+  });
+});
+$('fPaste').addEventListener('click', () => { if (folderOpenId) pasteInto(folderOpenId); });
+
+// --- Notepad ---
+let npBind = null;
+function npResolve() {
+  if (!npBind) return null;
+  return npBind.where === 'desk' ? findItem(npBind.id) : getFile(npBind.folderId, npBind.fileId);
+}
+function openNotepad(bind) {
+  npBind = bind || null;
+  const f = npResolve();
+  $('npText').value = f ? (f.content || '') : '';
+  $('npTitle').textContent = (f ? f.name : 'Untitled') + ' - Notepad';
+  $('notepadWindow').style.display = 'block';
+  $('npText').focus();
+}
+function npSaveAs() {
+  showPrompt('Save as (a new file on the Desktop):', 'New Text Document.txt', name => {
+    name = name.trim();
+    if (!name) return;
+    const it = { id: 'i' + Math.random().toString(36).slice(2, 9), type: 'txt', name: name, content: $('npText').value };
+    deskItems.push(it);
+    saveDesk();
+    renderDeskItems();
+    npBind = { where: 'desk', id: it.id };
+    $('npTitle').textContent = name + ' - Notepad';
+    showBalloon('\uD83D\uDCBE ' + name + ' saved to the Desktop.');
+  });
+}
+$('npSave').addEventListener('click', () => {
+  const f = npResolve();
+  if (!f) return npSaveAs();
+  f.content = $('npText').value;
+  saveDesk();
+  showBalloon('\uD83D\uDCBE ' + f.name + ' saved.');
+});
+$('npSaveAs').addEventListener('click', npSaveAs);
+$('npX').addEventListener('click', () => { $('notepadWindow').style.display = 'none'; });
+
+// --- Paint ---
+let ptBind = null, ptColor = '#000000', ptDown = false, ptLast = null;
+const ptCv = $('paintCanvas');
+const ptCtx = ptCv.getContext('2d');
+function ptReset() {
+  ptCtx.fillStyle = '#fff';
+  ptCtx.fillRect(0, 0, ptCv.width, ptCv.height);
+}
+function ptResolve() {
+  if (!ptBind) return null;
+  return ptBind.where === 'desk' ? findItem(ptBind.id) : getFile(ptBind.folderId, ptBind.fileId);
+}
+function openPaint(bind) {
+  ptBind = bind || null;
+  ptReset();
+  const f = ptResolve();
+  $('ptTitle').textContent = (f ? f.name : 'untitled') + ' - Paint';
+  if (f && f.data) {
+    const img = new Image();
+    img.onload = () => ptCtx.drawImage(img, 0, 0);
+    img.src = f.data;
+  }
+  $('paintWindow').style.display = 'block';
+}
+function ptPos(e) {
+  const r = ptCv.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return [t.clientX - r.left, t.clientY - r.top];
+}
+function ptStroke(to) {
+  ptCtx.strokeStyle = ptColor;
+  ptCtx.lineWidth = ptColor === '#FFFFFF' ? 14 : 3;
+  ptCtx.lineCap = 'round';
+  ptCtx.beginPath();
+  ptCtx.moveTo(ptLast[0], ptLast[1]);
+  ptCtx.lineTo(to[0], to[1]);
+  ptCtx.stroke();
+  ptLast = to;
+}
+ptCv.addEventListener('mousedown', e => { ptDown = true; ptLast = ptPos(e); ptStroke(ptPos(e)); });
+document.addEventListener('mousemove', e => { if (ptDown) ptStroke(ptPos(e)); });
+document.addEventListener('mouseup', () => { ptDown = false; });
+ptCv.addEventListener('touchstart', e => { ptDown = true; ptLast = ptPos(e); e.preventDefault(); }, { passive: false });
+ptCv.addEventListener('touchmove', e => { if (ptDown) { ptStroke(ptPos(e)); e.preventDefault(); } }, { passive: false });
+ptCv.addEventListener('touchend', () => { ptDown = false; });
+document.querySelectorAll('.pt-swatch').forEach(sw => sw.addEventListener('click', () => {
+  ptColor = sw.dataset.c;
+  document.querySelectorAll('.pt-swatch').forEach(x => x.classList.toggle('sel', x === sw));
+}));
+$('ptEraser').addEventListener('click', () => {
+  ptColor = '#FFFFFF';
+  document.querySelectorAll('.pt-swatch').forEach(x => x.classList.remove('sel'));
+});
+$('ptClear').addEventListener('click', ptReset);
+function ptSaveAs() {
+  showPrompt('Save as (a new drawing on the Desktop):', 'Untitled.bmp', name => {
+    name = name.trim();
+    if (!name) return;
+    const it = { id: 'i' + Math.random().toString(36).slice(2, 9), type: 'bmp', name: name, data: ptCv.toDataURL('image/png') };
+    deskItems.push(it);
+    saveDesk();
+    renderDeskItems();
+    ptBind = { where: 'desk', id: it.id };
+    $('ptTitle').textContent = name + ' - Paint';
+    showBalloon('\uD83C\uDFA8 ' + name + ' saved to the Desktop.');
+  });
+}
+$('ptSave').addEventListener('click', () => {
+  const f = ptResolve();
+  if (!f) return ptSaveAs();
+  f.data = ptCv.toDataURL('image/png');
+  saveDesk();
+  showBalloon('\uD83C\uDFA8 ' + f.name + ' saved.');
+});
+$('ptSaveAs').addEventListener('click', ptSaveAs);
+$('ptX').addEventListener('click', () => { $('paintWindow').style.display = 'none'; });
+
+// --- Display Properties (wallpaper + colour scheme actually apply) ---
+const WALLPAPERS = [['Bliss', ''], ['Azul', 'wp-azul'], ['Autumn', 'wp-autumn'], ['Midnight', 'wp-midnight']];
+const THEMES = [['Luna Blue', ''], ['Olive Green', 'th-olive'], ['Silver', 'th-silver']];
+function applyLook() {
+  const wp = localStorage.getItem('timetracker_wallpaper') || '';
+  const th = localStorage.getItem('timetracker_theme') || '';
+  document.body.className = (wp + ' ' + th).trim();
+}
+function openDisplayProps() {
+  const wp = localStorage.getItem('timetracker_wallpaper') || '';
+  const th = localStorage.getItem('timetracker_theme') || '';
+  $('dispBody').innerHTML =
+    '<div class="tm-sec">Wallpaper</div>' +
+    WALLPAPERS.map(w => '<div class="wa-item' + (wp === w[1] ? ' playing' : '') + '" data-wp="' + w[1] + '">' + w[0] + '</div>').join('') +
+    '<div class="tm-sec">Color scheme</div>' +
+    THEMES.map(t => '<div class="wa-item' + (th === t[1] ? ' playing' : '') + '" data-th="' + t[1] + '">' + t[0] + '</div>').join('');
+  $('dispBody').querySelectorAll('.wa-item').forEach(el => el.addEventListener('click', () => {
+    if (el.dataset.wp !== undefined) localStorage.setItem('timetracker_wallpaper', el.dataset.wp);
+    else localStorage.setItem('timetracker_theme', el.dataset.th);
+    applyLook();
+    openDisplayProps(); // refresh selection marks
+  }));
+  $('dispWindow').style.display = 'block';
+}
+$('dispX').addEventListener('click', () => { $('dispWindow').style.display = 'none'; });
+applyLook();
+
+// --- Task Manager (Ctrl+Shift+Esc) ---
+const TM_PROCS = [
+  ['clippy.exe', () => hideClippy()],
+  ['bonzi.exe', () => { $('pet').style.display = 'none'; }],
+  ['goose.exe', () => { $('goose').style.display = 'none'; }],
+  ['winamp.exe', () => waStop()],
+  ['motivation.exe', null, 'Not Responding'],
+  ['explorer.exe', () => deskRefresh()],
+  ['svchost.exe', null],
+  ['svchost.exe', null]
+];
+let tmIv = null;
+function tmApps() {
+  const apps = [];
+  if (mainWinEl.style.display !== 'none') {
+    apps.push(['Office Time Tracker', () => shutdown()]);
+  }
+  WIN_REGISTRY.forEach(([id, label]) => {
+    const w = $(id);
+    if (w.style.display === 'block') {
+      apps.push([label, () => {
+        const x = w.querySelector('.tbtn.close');
+        if (x) x.click(); else w.style.display = 'none';
+      }]);
+    }
+  });
+  return apps;
+}
+function renderTaskMgr() {
+  const apps = tmApps();
+  $('tmApps').innerHTML = apps.length
+    ? apps.map((a, i) => '<div class="tm-row"><span>' + a[0] + ' \u2014 Running</span><button data-i="' + i + '">End Task</button></div>').join('')
+    : '<div class="muted">No applications are running. Suspicious.</div>';
+  $('tmApps').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    const a = tmApps()[+b.dataset.i];
+    if (a) a[1]();
+    renderTaskMgr();
+  }));
+  $('tmProcs').innerHTML = TM_PROCS.map((p, i) =>
+    '<div class="tm-row"><span>' + p[0] +
+    (p[2] ? ' <span style="color:#C00000">(' + p[2] + ')</span>' : '') +
+    ' \u2014 CPU ' + Math.floor(Math.random() * 9) + '%</span><button data-i="' + i + '">End</button></div>').join('');
+  $('tmProcs').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    const p = TM_PROCS[+b.dataset.i];
+    if (p[1]) {
+      p[1]();
+      showBalloon(p[0] + ' has been terminated.');
+    } else {
+      showError('Unable to terminate ' + p[0] + '.\nAccess is denied. (It always is.)');
+    }
+  }));
+  $('tmFoot').textContent = 'Processes: ' + (TM_PROCS.length + 14) +
+    '   CPU Usage: ' + (2 + Math.floor(Math.random() * 7)) + '%   Commit Charge: 312M / 1024M';
+}
+function openTaskMgr() {
+  renderTaskMgr();
+  clearInterval(tmIv);
+  tmIv = setInterval(renderTaskMgr, 1500);
+  $('taskmgrWindow').style.display = 'block';
+}
+$('taskmgrX').addEventListener('click', () => {
+  clearInterval(tmIv);
+  $('taskmgrWindow').style.display = 'none';
+});
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'Escape') {
+    e.preventDefault();
+    openTaskMgr();
+  }
+});
+$('smNotepad').addEventListener('click', () => { closeStart(); openNotepad(null); });
+$('smPaint').addEventListener('click', () => { closeStart(); openPaint(null); });
+$('smTaskmgr').addEventListener('click', () => { closeStart(); openTaskMgr(); });
 
 // XP-style right-click menu
 function showCtx(items, x, y) {
@@ -2510,15 +3089,17 @@ document.addEventListener('contextmenu', e => {
   if (e.target.closest('.xp-window, .mini-win, #mineWindow, .taskbar, #startMenu, #dashboard, #loginScreen, #setupWindow, .overlay, #lootWin, #bossScreen, #ctxMenu, input, textarea')) return;
   e.preventDefault();
   const icon = e.target.closest('.dicon');
-  if (icon && icon.dataset.folder !== undefined) {
-    const i = +icon.dataset.folder;
+  if (icon && icon.dataset.item !== undefined) {
+    const id = icon.dataset.item;
+    const it = findItem(id);
     showCtx([
-      { label: '<b>Open</b>', fn: () => openFolder(i) },
+      { label: '<b>Open</b>', fn: () => openDeskItem(id) },
+      { label: 'Cut', fn: () => { deskClip = { itemId: id }; } },
       '-',
-      { label: 'Rename', fn: () => renameFolder(i) },
-      { label: 'Delete', fn: () => deleteFolder(i) },
+      { label: 'Rename', fn: () => renameDeskItem(id) },
+      { label: 'Delete', fn: () => deleteDeskItem(id) },
       '-',
-      { label: 'Properties', fn: () => showInfo(deskFolders[i].name + ' Properties\n\nType: File Folder\nLocation: C:\\Documents and Settings\\Desktop\nSize: 0 bytes\nContains: 0 Files, 0 Folders') }
+      { label: 'Properties', fn: () => showInfo(it.name + ' Properties\n\nType: ' + (it.type === 'folder' ? 'File Folder (' + it.files.length + ' objects)' : it.type === 'txt' ? 'Text Document' : 'Bitmap Image') + '\nLocation: C:\\Documents and Settings\\Desktop') }
     ], e.clientX, e.clientY);
   } else if (icon) {
     showCtx([
@@ -2527,19 +3108,22 @@ document.addEventListener('contextmenu', e => {
       { label: 'Properties', fn: () => showInfo('Type: System object\nLocation: C:\\Desktop\nAttributes: Read-only (of course)') }
     ], e.clientX, e.clientY);
   } else {
+    const px = e.clientX, py = e.clientY;
     showCtx([
       { label: 'Refresh', fn: deskRefresh },
       '-',
-      { label: 'Paste', disabled: true },
+      { label: 'Paste', disabled: !deskClip, fn: () => pasteDesktop(px, py) },
       { label: 'Paste Shortcut', disabled: true },
       '-',
-      { label: 'New Folder', fn: newFolder },
+      { label: 'New Folder', fn: () => newDeskItem('folder', 'New Folder', px, py) },
+      { label: 'New Text Document', fn: () => newDeskItem('txt', 'New Text Document.txt', px, py) },
+      { label: 'New Drawing', fn: () => newDeskItem('bmp', 'Untitled.bmp', px, py) },
       '-',
-      { label: 'Properties', fn: () => showInfo('Display Properties\n\nTheme: Windows XP (Luna)\nWallpaper: Bliss\nScreen saver: Mystify Your Mind\nColor quality: Highest (32 bit)') }
+      { label: 'Properties', fn: openDisplayProps }
     ], e.clientX, e.clientY);
   }
 });
-renderDeskFolders();
+renderDeskItems();
 
 // --- Recycle bin logic (restore-only: history can never be deleted) ---
 function restoreDay(k) {
@@ -3522,8 +4106,9 @@ function checkStreak() {
   while (count < 10) {
     if (d.getDay() !== 0 && d.getDay() !== 6) {
       const rec = history[dateKey(d)];
-      if (!rec || rec.worked < (rec.target || settings.targetMin * 60000) - 60000) break;
-      count++;
+      if (rec && isAbsence(rec)) { /* days off don't break streaks */ }
+      else if (!rec || rec.worked < (rec.target || settings.targetMin * 60000) - 60000) break;
+      else count++;
     }
     d.setDate(d.getDate() - 1);
   }
@@ -3833,7 +4418,12 @@ function installToolbar() {
 // --- Esc: close the topmost open window; double-Esc with nothing open = boss key ---
 let lastEsc = 0;
 document.addEventListener('keydown', e => {
-  if (e.key !== 'Escape') return;
+  if (e.key !== 'Escape' || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if ($('editModal').style.display === 'flex') {
+    $('editModal').style.display = 'none';
+    lastEsc = 0;
+    return;
+  }
   if ($('dayModal').style.display === 'flex') {
     closeDayDetail();
     lastEsc = 0;
@@ -4289,7 +4879,7 @@ function renderWeek() {
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
     const rec = history[dateKey(d)];
-    if (rec) {
+    if (rec && !isAbsence(rec)) {
       total += rec.worked;
       net += rec.worked - (rec.target || 480 * 60000);
       count++;
@@ -4305,7 +4895,7 @@ function renderWeek() {
   for (let i = 0; i < 5; i++) {
     const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
     const rec = history[dateKey(d)];
-    if (rec && rec.worked >= (rec.target || settings.targetMin * 60000) - 60000) perfect++;
+    if (rec && (isAbsence(rec) || rec.worked >= (rec.target || settings.targetMin * 60000) - 60000)) perfect++;
   }
   if (perfect === 5) award('perfectweek');
 }
@@ -4517,7 +5107,11 @@ function renderCalendar() {
     const k = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
     const rec = history[k];
     let cls = 'cal-cell', body = '';
-    if (rec) {
+    if (rec && isAbsence(rec)) {
+      cls += ' has off';
+      body = '<div class="cd-hours">' + kindLabel(rec) + '</div>' +
+        (rec.note ? '<div class="cd-note">' + esc(rec.note) + '</div>' : '');
+    } else if (rec) {
       const ok = rec.worked >= (rec.target || defT) - 60000;
       cls += ' has ' + (ok ? 'ok' : 'short');
       body = '<div class="cd-hours ' + (ok ? 'pos' : 'neg') + '">' + fmtDurShort(rec.worked) + '</div>' +
@@ -4552,7 +5146,8 @@ function openDayDetail(k) {
   const tgt = rec.target || settings.targetMin * 60000;
   const net = rec.worked - tgt;
   const dt = new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8));
-  $('dmTitle').textContent = dt.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  $('dmTitle').textContent = dt.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) +
+    (isAbsence(rec) ? ' \u2014 ' + kindLabel(rec) : '');
   $('dmStats').innerHTML = [
     ['Worked', fmtDurShort(rec.worked), ''],
     ['Breaks', fmtDurShort(rec.breaks || 0), ''],
@@ -4604,33 +5199,91 @@ $('dashHeat').addEventListener('click', e => {
   if (k && history[k]) openDayDetail(k);
 });
 
+// --- Manual day editor (add or fix any day, mark holidays/sick days) ---
+function openDayEditor(k) {
+  const rec = k && history[k];
+  $('emDate').value = k || dateKey(new Date());
+  $('emKind').value = (rec && rec.kind) || '';
+  $('emWorked').value = rec && !isAbsence(rec) ? +(rec.worked / 3600000).toFixed(2) : (settings.targetMin / 60);
+  $('emBreaks').value = rec ? +((rec.breaks || 0) / 3600000).toFixed(2) : 0;
+  $('emNote').value = (rec && rec.note) || '';
+  emKindChange();
+  emHintUpdate();
+  $('editModal').style.display = 'flex';
+}
+function emKindChange() {
+  const absent = !!$('emKind').value;
+  $('emWorkRow').style.display = absent ? 'none' : 'flex';
+  $('emBreakRow').style.display = absent ? 'none' : 'flex';
+}
+function emHintUpdate() {
+  $('emHint').textContent = ($('emDate').value === dateKey(new Date()) && data)
+    ? 'Note: today is tracked live \u2014 loaded punch data will override manual hours.'
+    : '';
+}
+$('emKind').addEventListener('change', emKindChange);
+$('emDate').addEventListener('change', emHintUpdate);
+$('emClose').addEventListener('click', () => { $('editModal').style.display = 'none'; });
+$('editModal').addEventListener('click', e => { if (e.target === $('editModal')) $('editModal').style.display = 'none'; });
+$('dashAddDay').addEventListener('click', () => openDayEditor(null));
+$('dmEdit').addEventListener('click', () => {
+  const k = dmKey;
+  closeDayDetail();
+  openDayEditor(k);
+});
+$('emSave').addEventListener('click', () => {
+  const k = $('emDate').value;
+  if (!k) return;
+  const kind = $('emKind').value;
+  const prev = history[k] || {};
+  const rec = {
+    worked: kind ? 0 : Math.max(0, Math.round((parseFloat($('emWorked').value) || 0) * 3600000)),
+    breaks: kind ? 0 : Math.max(0, Math.round((parseFloat($('emBreaks').value) || 0) * 3600000)),
+    target: kind ? (prev.target || settings.targetMin * 60000) : (prev.target || settings.targetMin * 60000),
+    manual: true
+  };
+  if (kind) rec.kind = kind;
+  const note = $('emNote').value.trim();
+  if (note) rec.note = note;
+  if (prev.sessions && !kind) rec.sessions = prev.sessions;
+  history[k] = rec;
+  lsSet(HISTORY_KEY, JSON.stringify(history));
+  $('editModal').style.display = 'none';
+  buildDashboard();
+  renderCalendar();
+  renderMonth();
+});
+
 function buildDashboard() {
   const defT = settings.targetMin * 60000;
   const keys = Object.keys(history).sort();
 
   // --- summary cards ---
-  let total = 0, net = 0, totalBreaks = 0, bestMs = 0, bestKey = null;
+  let total = 0, net = 0, totalBreaks = 0, bestMs = 0, bestKey = null, offDays = 0;
   keys.forEach(k => {
     const d = history[k];
+    if (isAbsence(d)) { offDays++; return; }
     total += d.worked;
     net += d.worked - (d.target || defT);
     totalBreaks += d.breaks || 0;
     if (d.worked > bestMs) { bestMs = d.worked; bestKey = k; }
   });
-  // current streak of weekdays on target
+  const workedDays = keys.length - offDays;
+  // current streak of weekdays on target (days off don't break it)
   let streak = 0, guard = 0;
   const sd = new Date();
   while (guard++ < 1000) {
     if (sd.getDay() !== 0 && sd.getDay() !== 6) {
       const rec = history[dateKey(sd)];
-      if (!rec || rec.worked < (rec.target || defT) - 60000) break;
-      streak++;
+      if (rec && isAbsence(rec)) { /* skip */ }
+      else if (!rec || rec.worked < (rec.target || defT) - 60000) break;
+      else streak++;
     }
     sd.setDate(sd.getDate() - 1);
   }
   const cards = [
-    ['Total tracked', keys.length ? fmtDurShort(total) : '0h', keys.length + ' day' + (keys.length === 1 ? '' : 's')],
-    ['Average / day', keys.length ? fmtDurShort(total / keys.length) : '\u2014', 'target ' + fmtDurShort(defT)],
+    ['Total tracked', workedDays ? fmtDurShort(total) : '0h', workedDays + ' worked day' + (workedDays === 1 ? '' : 's') + (offDays ? ' \u00B7 ' + offDays + ' off' : '')],
+    ['Average / day', workedDays ? fmtDurShort(total / workedDays) : '\u2014', 'target ' + fmtDurShort(defT)],
     ['Net balance', (net >= 0 ? '+' : '') + fmtDurShort(net), net >= 0 ? 'ahead of target' : 'behind target', net >= 0 ? 'pos' : 'neg'],
     ['Best day', bestKey ? fmtDurShort(bestMs) : '\u2014', bestKey || 'no data yet'],
     ['Current streak', streak + ' day' + (streak === 1 ? '' : 's'), 'weekdays on target'],
@@ -4667,13 +5320,17 @@ function buildDashboard() {
   while (cur <= end) {
     const k = dateKey(cur);
     const rec = history[k];
-    let lvl = 0;
+    let cls = '';
     if (rec) {
-      const r = rec.worked / (rec.target || defT);
-      lvl = r >= 1 ? 4 : r >= 0.75 ? 3 : r >= 0.5 ? 2 : 1;
+      if (isAbsence(rec)) {
+        cls = 'hlA';
+      } else {
+        const r = rec.worked / (rec.target || defT);
+        cls = 'hl' + (r >= 1 ? 4 : r >= 0.75 ? 3 : r >= 0.5 ? 2 : 1);
+      }
     }
-    cells += '<i' + (lvl ? ' class="hl' + lvl + '"' : '') + ' data-k="' + k + '" title="' + k +
-      (rec ? ' \u2014 ' + fmtDurShort(rec.worked) : '') + '"></i>';
+    cells += '<i' + (cls ? ' class="' + cls + '"' : '') + ' data-k="' + k + '" title="' + k +
+      (rec ? ' \u2014 ' + (isAbsence(rec) ? kindLabel(rec) : fmtDurShort(rec.worked)) : '') + '"></i>';
     cur.setDate(cur.getDate() + 1);
   }
   $('dashHeat').innerHTML = cells;
@@ -4703,8 +5360,9 @@ function buildDashTable(filter) {
   let html = '';
   Object.keys(groups).sort().reverse().forEach(g => {
     const ks = groups[g];
-    const tot = ks.reduce((s, k) => s + history[k].worked, 0);
-    const gnet = ks.reduce((s, k) => s + history[k].worked - (history[k].target || defT), 0);
+    const wk = ks.filter(k => !isAbsence(history[k]));
+    const tot = wk.reduce((s, k) => s + history[k].worked, 0);
+    const gnet = wk.reduce((s, k) => s + history[k].worked - (history[k].target || defT), 0);
     const title = new Date(+g.slice(0, 4), +g.slice(5, 7) - 1, 1)
       .toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
     html += '<h3>' + title + ' <span>&#8212; ' + fmtDurShort(tot) + ' \u00B7 ' +
@@ -4712,9 +5370,17 @@ function buildDashTable(filter) {
     html += '<table><thead><tr><th>Date</th><th>Worked</th><th>Breaks</th><th>Net</th><th>Note</th></tr></thead><tbody>';
     ks.forEach(k => {
       const d = history[k];
-      const net = d.worked - (d.target || defT);
       const dt = new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8));
       const label = dt.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
+      if (isAbsence(d)) {
+        html += '<tr' + (k === todayKey ? ' class="db-today"' : '') + ' data-k="' + k + '" title="Click for day details">' +
+          '<td>' + label + '</td>' +
+          '<td colspan="2">' + kindLabel(d) + '</td>' +
+          '<td class="db-note">\u2014</td>' +
+          '<td class="db-note">' + (d.note ? esc(d.note) : '') + '</td></tr>';
+        return;
+      }
+      const net = d.worked - (d.target || defT);
       html += '<tr' + (k === todayKey ? ' class="db-today"' : '') + ' data-k="' + k + '" title="Click for day details">' +
         '<td>' + label + '</td>' +
         '<td>' + fmtDurShort(d.worked) + '</td>' +
@@ -4739,7 +5405,12 @@ const WIN_REGISTRY = [
   ['defragWindow', '\uD83D\uDDC4\uFE0F Defrag'],
   ['settingsWindow', '\u2699\uFE0F Control Panel'],
   ['achWindow', '\uD83C\uDFC6 Achievements'],
-  ['binWindow', '\uD83D\uDDD1\uFE0F Recycle Bin']
+  ['binWindow', '\uD83D\uDDD1\uFE0F Recycle Bin'],
+  ['folderWindow', '\uD83D\uDCC1 Explorer'],
+  ['notepadWindow', '\uD83D\uDCC4 Notepad'],
+  ['paintWindow', '\uD83C\uDFA8 Paint'],
+  ['taskmgrWindow', '\uD83D\uDCCB Task Manager'],
+  ['dispWindow', '\uD83D\uDDA5\uFE0F Display']
 ];
 let zTop = 90, lastFocused = null;
 function focusWin(win) {
