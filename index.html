@@ -1048,6 +1048,101 @@
   #dashTable .db-note { color: #94a3b8; font-style: italic; }
   #dashTable .db-today td:first-child { color: #38bdf8; font-weight: 600; }
   .db-empty { color: #64748b; text-align: center; padding: 30px 0; }
+
+  /* --- dashboard calendar (monthly day-focused view) --- */
+  .dash-btn {
+    min-width: 0;
+    border: 1px solid #334155;
+    background: #16213b;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .dash-btn:hover { background: #334155; box-shadow: none; }
+  .dash-btn:active { background: #0f172a; }
+  .dash-cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
+  .dash-cal-head h2 { margin: 0; }
+  .dash-cal-nav { display: flex; gap: 6px; }
+  .dash-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-dow { text-align: center; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding-bottom: 2px; }
+  .cal-cell {
+    background: #16213b;
+    border: 1px solid #293548;
+    border-radius: 8px;
+    min-height: 62px;
+    padding: 6px 8px;
+    overflow: hidden;
+  }
+  .cal-cell.empty { background: transparent; border-color: transparent; }
+  .cal-cell.has { cursor: pointer; }
+  .cal-cell.has:hover { border-color: #38bdf8; }
+  .cal-cell.ok { background: rgba(34,197,94,0.08); border-color: #1d4a2c; }
+  .cal-cell.short { background: rgba(248,113,113,0.07); border-color: #5b2320; }
+  .cal-cell.today { outline: 2px solid #38bdf8; outline-offset: -1px; }
+  .cal-cell .cd-num { color: #94a3b8; font-size: 11px; }
+  .cal-cell .cd-hours { font-size: 13px; font-weight: 600; margin-top: 3px; }
+  .cal-cell .cd-note {
+    font-size: 10px; color: #64748b;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  /* --- per-day detail modal --- */
+  #dayModal {
+    display: none;
+    position: fixed; inset: 0;
+    z-index: 1500;
+    background: rgba(2,6,23,0.65);
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .day-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 18px 20px;
+    width: 100%;
+    max-width: 440px;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: dashIn .15s ease-out;
+  }
+  .dm-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .dm-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .day-card h4 { margin: 16px 0 8px; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+  .dm-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .dm-stat { background: #16213b; border-radius: 8px; padding: 8px 10px; }
+  .dm-stat .dc-value { font-size: 14px; }
+  .day-card table { width: 100%; border-collapse: collapse; background: transparent; border: none; }
+  .day-card th {
+    background: none; border: none; border-bottom: 1px solid #293548;
+    color: #64748b; font-size: 11px; text-transform: uppercase;
+    padding: 5px 8px; text-align: left;
+  }
+  .day-card td { border: none; border-bottom: 1px solid #22304a; padding: 6px 8px; font-size: 13px; }
+  .dm-note-row { display: flex; gap: 8px; }
+  #dmNote {
+    flex: 1;
+    border: 1px solid #334155;
+    background: #16213b;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 13px;
+    outline: none;
+  }
+  #dmNote:focus { border-color: #38bdf8; }
+  #dashTable tbody tr { cursor: pointer; }
+  .dash-heat i { cursor: pointer; }
+  @media (max-width: 640px) {
+    .dm-stats { grid-template-columns: 1fr 1fr; }
+    .cal-cell { min-height: 48px; padding: 4px 5px; }
+    .cal-cell .cd-hours { font-size: 11px; }
+    .cal-cell .cd-note { display: none; }
+  }
   .month-nav #todayMonth, .month-nav #openDash { width: auto; min-width: 0; padding: 2px 8px; }
   @media (max-width: 640px) {
     .dash-head { padding: 10px 12px; flex-wrap: wrap; gap: 10px; }
@@ -1400,6 +1495,17 @@
   <div class="dash-body">
     <div class="dash-cards" id="dashCards"></div>
     <div class="dash-panel">
+      <div class="dash-cal-head">
+        <h2 id="calTitle">Calendar</h2>
+        <div class="dash-cal-nav">
+          <button class="dash-btn" id="calPrev" title="Previous month">&#8249;</button>
+          <button class="dash-btn" id="calToday">Today</button>
+          <button class="dash-btn" id="calNext" title="Next month">&#8250;</button>
+        </div>
+      </div>
+      <div class="dash-cal-grid" id="calGrid"></div>
+    </div>
+    <div class="dash-panel">
       <h2>Hours per month &#8212; last 12 months</h2>
       <div class="dash-bars" id="dashBars"></div>
     </div>
@@ -1411,6 +1517,23 @@
     <div class="dash-panel">
       <h2>All days</h2>
       <div id="dashTable"></div>
+    </div>
+  </div>
+
+  <div id="dayModal">
+    <div class="day-card">
+      <div class="dm-head">
+        <h3 id="dmTitle"></h3>
+        <button class="dash-btn" id="dmClose">&#10005;</button>
+      </div>
+      <div class="dm-stats" id="dmStats"></div>
+      <h4>Punch Sessions</h4>
+      <div id="dmSessions"></div>
+      <h4>Note</h4>
+      <div class="dm-note-row">
+        <input id="dmNote" maxlength="120" placeholder="Add a note for this day&hellip;">
+        <button class="dash-btn" id="dmNoteSave">Save</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1561,7 +1684,7 @@ function dateKey(d) {
     String(d.getDate()).padStart(2, '0');
 }
 
-function saveDayToHistory(dayKey, workedMs, breakMs, targetMs) {
+function saveDayToHistory(dayKey, workedMs, breakMs, targetMs, sessions) {
   // Merge with what's on disk first: another tab (or an older session) may have
   // recorded days this tab doesn't know about — never clobber them.
   const disk = lsGetJSON(HISTORY_KEY, {});
@@ -1569,6 +1692,8 @@ function saveDayToHistory(dayKey, workedMs, breakMs, targetMs) {
   const prev = history[dayKey] || {};
   history[dayKey] = { worked: workedMs, breaks: breakMs, target: targetMs };
   if (prev.note) history[dayKey].note = prev.note;
+  if (sessions && sessions.length) history[dayKey].sessions = sessions;
+  else if (prev.sessions) history[dayKey].sessions = prev.sessions;
   lsSet(HISTORY_KEY, JSON.stringify(history));
 }
 
@@ -1916,7 +2041,8 @@ function render() {
   const monthSig = dayKey + '|' + Math.floor(workedMs / 60000) + '|' + Math.floor(breakMs / 60000) + '|' + targetMs;
   if (monthSig !== lastMonthSig) {
     lastMonthSig = monthSig;
-    saveDayToHistory(dayKey, workedMs, breakMs, targetMs);
+    saveDayToHistory(dayKey, workedMs, breakMs, targetMs,
+      sorted.map(s => [s.punch_in, s.punch_out || null]));
     renderMonth();
   }
 
@@ -3060,6 +3186,11 @@ function installToolbar() {
 let lastEsc = 0;
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  if ($('dayModal').style.display === 'flex') {
+    closeDayDetail();
+    lastEsc = 0;
+    return;
+  }
   if ($('dashboard').style.display === 'block') {
     closeDashboard();
     lastEsc = 0;
@@ -3705,7 +3836,9 @@ function fmtDur(ms) {
 
 // --- History dashboard (modern fullscreen view) ---
 function openDashboard() {
+  calMonth = new Date();
   buildDashboard();
+  renderCalendar();
   $('dashSearch').value = '';
   $('dashboard').style.display = 'block';
   $('dashboard').scrollTop = 0;
@@ -3718,6 +3851,109 @@ function closeDashboard() {
 $('dashBack').addEventListener('click', closeDashboard);
 $('dashSearch').addEventListener('input', () =>
   buildDashTable($('dashSearch').value.trim().toLowerCase()));
+
+// --- Dashboard calendar (monthly day-focused view) ---
+let calMonth = new Date();
+function renderCalendar() {
+  const y = calMonth.getFullYear(), mo = calMonth.getMonth();
+  $('calTitle').textContent = calMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const defT = settings.targetMin * 60000;
+  const lead = (new Date(y, mo, 1).getDay() + 6) % 7; // days before the 1st (Monday-start)
+  const dim = new Date(y, mo + 1, 0).getDate();
+  const todayKey = dateKey(new Date());
+  let html = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    .map(d => '<div class="cal-dow">' + d + '</div>').join('');
+  for (let i = 0; i < lead; i++) html += '<div class="cal-cell empty"></div>';
+  for (let d = 1; d <= dim; d++) {
+    const k = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const rec = history[k];
+    let cls = 'cal-cell', body = '';
+    if (rec) {
+      const ok = rec.worked >= (rec.target || defT) - 60000;
+      cls += ' has ' + (ok ? 'ok' : 'short');
+      body = '<div class="cd-hours ' + (ok ? 'pos' : 'neg') + '">' + fmtDurShort(rec.worked) + '</div>' +
+        (rec.note ? '<div class="cd-note">' + esc(rec.note) + '</div>' : '');
+    }
+    if (k === todayKey) cls += ' today';
+    html += '<div class="' + cls + '" data-k="' + k + '"><div class="cd-num">' + d + '</div>' + body + '</div>';
+  }
+  $('calGrid').innerHTML = html;
+  $('calGrid').querySelectorAll('.cal-cell.has').forEach(c =>
+    c.addEventListener('click', () => openDayDetail(c.dataset.k)));
+}
+$('calPrev').addEventListener('click', () => {
+  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
+  renderCalendar();
+});
+$('calNext').addEventListener('click', () => {
+  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
+  renderCalendar();
+});
+$('calToday').addEventListener('click', () => {
+  calMonth = new Date();
+  renderCalendar();
+});
+
+// --- Per-day detail modal ---
+let dmKey = null;
+function openDayDetail(k) {
+  const rec = history[k];
+  if (!rec) return;
+  dmKey = k;
+  const tgt = rec.target || settings.targetMin * 60000;
+  const net = rec.worked - tgt;
+  const dt = new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8));
+  $('dmTitle').textContent = dt.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  $('dmStats').innerHTML = [
+    ['Worked', fmtDurShort(rec.worked), ''],
+    ['Breaks', fmtDurShort(rec.breaks || 0), ''],
+    ['Target', fmtDurShort(tgt), ''],
+    ['Net', (net >= 0 ? '+' : '') + fmtDurShort(net), net >= 0 ? 'pos' : 'neg']
+  ].map(s =>
+    '<div class="dm-stat"><div class="dc-label">' + s[0] + '</div>' +
+    '<div class="dc-value ' + s[2] + '">' + s[1] + '</div></div>').join('');
+  if (rec.sessions && rec.sessions.length) {
+    const isToday = k === dateKey(new Date());
+    $('dmSessions').innerHTML =
+      '<table><thead><tr><th>#</th><th>Punch In</th><th>Punch Out</th><th>Duration</th></tr></thead><tbody>' +
+      rec.sessions.map((s, i) => {
+        const a = new Date(s[0]);
+        const b = s[1] ? new Date(s[1]) : null;
+        const out = b ? fmtClock(b) : (isToday ? '<span class="pos">working&hellip;</span>' : '\u2014');
+        const dur = b ? fmtDurShort(b - a) : (isToday ? 'ongoing' : '\u2014');
+        return '<tr><td>' + (i + 1) + '</td><td>' + fmtClock(a) + '</td><td>' + out + '</td><td>' + dur + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } else {
+    $('dmSessions').innerHTML =
+      '<p class="db-empty" style="padding:8px 0">No punch-in/out detail was recorded for this day.<br>Session detail is saved automatically from now on.</p>';
+  }
+  $('dmNote').value = rec.note || '';
+  $('dayModal').style.display = 'flex';
+}
+function closeDayDetail() {
+  dmKey = null;
+  $('dayModal').style.display = 'none';
+}
+$('dmClose').addEventListener('click', closeDayDetail);
+$('dayModal').addEventListener('click', e => { if (e.target === $('dayModal')) closeDayDetail(); });
+$('dmNoteSave').addEventListener('click', () => {
+  if (!dmKey || !history[dmKey]) return;
+  const val = $('dmNote').value.trim();
+  if (val) history[dmKey].note = val;
+  else delete history[dmKey].note;
+  lsSet(HISTORY_KEY, JSON.stringify(history));
+  renderCalendar();
+  buildDashTable($('dashSearch').value.trim().toLowerCase());
+  renderMonth();
+  const b = $('dmNoteSave');
+  b.textContent = 'Saved \u2713';
+  setTimeout(() => { b.textContent = 'Save'; }, 1200);
+});
+// Heatmap squares open the day too (event delegation)
+$('dashHeat').addEventListener('click', e => {
+  const k = e.target.dataset && e.target.dataset.k;
+  if (k && history[k]) openDayDetail(k);
+});
 
 function buildDashboard() {
   const defT = settings.targetMin * 60000;
@@ -3787,7 +4023,7 @@ function buildDashboard() {
       const r = rec.worked / (rec.target || defT);
       lvl = r >= 1 ? 4 : r >= 0.75 ? 3 : r >= 0.5 ? 2 : 1;
     }
-    cells += '<i' + (lvl ? ' class="hl' + lvl + '"' : '') + ' title="' + k +
+    cells += '<i' + (lvl ? ' class="hl' + lvl + '"' : '') + ' data-k="' + k + '" title="' + k +
       (rec ? ' \u2014 ' + fmtDurShort(rec.worked) : '') + '"></i>';
     cur.setDate(cur.getDate() + 1);
   }
@@ -3830,7 +4066,7 @@ function buildDashTable(filter) {
       const net = d.worked - (d.target || defT);
       const dt = new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8));
       const label = dt.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
-      html += '<tr' + (k === todayKey ? ' class="db-today"' : '') + '>' +
+      html += '<tr' + (k === todayKey ? ' class="db-today"' : '') + ' data-k="' + k + '" title="Click for day details">' +
         '<td>' + label + '</td>' +
         '<td>' + fmtDurShort(d.worked) + '</td>' +
         '<td>' + fmtDurShort(d.breaks || 0) + '</td>' +
@@ -3840,6 +4076,8 @@ function buildDashTable(filter) {
     html += '</tbody></table>';
   });
   $('dashTable').innerHTML = html;
+  $('dashTable').querySelectorAll('tbody tr').forEach(tr =>
+    tr.addEventListener('click', () => openDayDetail(tr.dataset.k)));
 }
 
 // --- Window manager: drag, click-to-front, taskbar buttons ---
