@@ -973,6 +973,91 @@
   .tm-row button { min-width: 0; padding: 1px 8px; font-size: 10px; }
   .tm-foot { border-top: 1px solid #ACA899; margin-top: 8px; padding-top: 5px; color: #444; }
 
+  /* --- Internet Explorer --- */
+  .ie-tools {
+    display: flex; gap: 5px; align-items: center;
+    padding: 6px 8px;
+    border-bottom: 1px solid #ACA899;
+    background: #ECE9D8;
+  }
+  .ie-tools button { min-width: 0; padding: 3px 9px; }
+  .ie-tools button:disabled { color: #999; }
+  #ieAddr { flex: 1; border: 1px solid #7F9DB9; padding: 4px 6px; background: #fff; font-size: 11px; }
+  .ie-body { width: 500px; height: 330px; background: #fff; overflow: auto; padding: 14px; }
+  .ielink { color: #00e; text-decoration: underline; cursor: pointer; }
+  .blink { animation: blinkAnim 1s steps(2) infinite; }
+  @keyframes blinkAnim { 50% { opacity: 0; } }
+
+  /* --- Solitaire --- */
+  .sol-tools {
+    display: flex; gap: 6px; align-items: center;
+    padding: 6px 8px;
+    border-bottom: 1px solid #ACA899;
+    background: #ECE9D8;
+  }
+  .sol-tools button { min-width: 0; padding: 3px 10px; }
+  .sol-body { background: #0B7B2C; padding: 10px; width: 486px; min-height: 380px; user-select: none; }
+  .sol-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .sol-cols { display: flex; gap: 8px; align-items: flex-start; }
+  .sol-col { width: 62px; min-height: 90px; }
+  .scard {
+    width: 62px; height: 86px;
+    border-radius: 5px;
+    border: 1px solid #333;
+    background: #fff;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 2px 4px;
+    box-sizing: border-box;
+    cursor: pointer;
+    position: relative;
+  }
+  .scard.back { background: repeating-linear-gradient(45deg, #1D53C7 0, #1D53C7 6px, #2A6BE0 6px, #2A6BE0 12px); }
+  .scard.red { color: #C00000; }
+  .scard.sel { outline: 3px solid #FFC73C; }
+  .scard .sc-big { position: absolute; bottom: 2px; right: 5px; font-size: 22px; }
+  .sol-col .scard { margin-bottom: -62px; }
+  .sol-col .scard:last-child { margin-bottom: 0; }
+  .sol-empty {
+    width: 62px; height: 86px;
+    border: 1px dashed rgba(255,255,255,0.55);
+    border-radius: 5px;
+    box-sizing: border-box;
+    color: rgba(255,255,255,0.6);
+    font-size: 24px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+
+  /* --- Windows Update shutdown prank --- */
+  #updateScreen {
+    display: none;
+    position: fixed; inset: 0;
+    z-index: 1150;
+    background: #3A6EA5;
+    color: #fff;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: "Franklin Gothic Medium", Tahoma, sans-serif;
+  }
+  .us-spin {
+    width: 28px; height: 28px;
+    border: 4px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    margin: 0 auto 18px;
+    animation: usSpin 1s linear infinite;
+  }
+  @keyframes usSpin { to { transform: rotate(360deg); } }
+  .us-text { font-size: 22px; margin-bottom: 8px; }
+  .us-sub { color: #CFE1F5; margin-bottom: 22px; font-size: 14px; }
+  .us-bar { width: 300px; height: 16px; border: 1px solid #fff; border-radius: 3px; margin: 0 auto; padding: 2px; }
+  #usFill { height: 100%; width: 0; background: #7DC242; transition: width .3s; }
+
+  /* --- start menu keyboard highlight --- */
+  .sm-item.kbd-sel { background: #316AC5; color: #fff; }
+
   /* --- wallpapers + color schemes (Display Properties) --- */
   body.wp-azul { background: linear-gradient(180deg, #0763AF 0%, #3E92DD 45%, #7DB9E8 70%, #0B4F8F 100%) fixed; }
   body.wp-autumn { background: linear-gradient(180deg, #8C3B0F 0%, #C96A1E 40%, #E8A33D 65%, #5C2E0D 100%) fixed; }
@@ -1310,7 +1395,7 @@
     <div class="di-img">&#128193;</div>
     <div class="di-label">My Documents</div>
   </div>
-  <div class="dicon" data-msg="Internet Explorer cannot display the webpage.">
+  <div class="dicon" data-action="ie">
     <div class="di-img">&#127760;</div>
     <div class="di-label">Internet Explorer</div>
   </div>
@@ -1506,6 +1591,7 @@
     <div class="sm-item" id="smTrophies">&#127942; Achievements</div>
     <div class="sm-item" id="smScores">&#129351; High Scores</div>
     <div class="sm-item" id="smMine">&#128163; Minesweeper</div>
+    <div class="sm-item" id="smSolitaire">&#127183; Solitaire</div>
     <div class="sm-item" id="smPinball">&#127921; Pinball</div>
     <div class="sm-item" id="smWinamp">&#127925; Winamp</div>
     <div class="sm-item" id="smMsn">&#128172; MSN Messenger</div>
@@ -1756,6 +1842,42 @@
     <div class="tm-sec">Processes</div>
     <div id="tmProcs"></div>
     <div class="tm-foot" id="tmFoot"></div>
+  </div>
+</div>
+
+<div id="ieWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text" id="ieTitle">Microsoft Internet Explorer</span>
+    <span class="title-buttons"><span class="tbtn close" id="ieX">&#10005;</span></span>
+  </div>
+  <div class="ie-tools">
+    <button id="ieBack" title="Back">&#8592;</button>
+    <button id="ieFwd" title="Forward">&#8594;</button>
+    <button id="ieHome" title="Home">&#127968;</button>
+    <input id="ieAddr" readonly>
+    <button id="ieGo">Go</button>
+  </div>
+  <div class="ie-body" id="ieBody"></div>
+</div>
+
+<div id="solWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">Solitaire</span>
+    <span class="title-buttons"><span class="tbtn close" id="solX">&#10005;</span></span>
+  </div>
+  <div class="sol-tools">
+    <button id="solNewBtn">New Game</button>
+    <span id="solStatus" style="margin-left:auto; color:#555"></span>
+  </div>
+  <div class="sol-body" id="solBody"></div>
+</div>
+
+<div id="updateScreen">
+  <div>
+    <div class="us-spin"></div>
+    <div class="us-text" id="usText">Installing update 3 of 847,479...</div>
+    <div class="us-sub">Do not turn off your computer.</div>
+    <div class="us-bar"><div id="usFill"></div></div>
   </div>
 </div>
 
@@ -2572,6 +2694,8 @@ document.querySelectorAll('.dicon').forEach(icon => {
       showBsod();
     } else if (action === 'minesweeper') {
       openMinesweeper();
+    } else if (action === 'ie') {
+      openIE();
     } else if (action === 'virus') {
       virusStart();
     } else {
@@ -2972,6 +3096,8 @@ function applyLook() {
   const th = localStorage.getItem('timetracker_theme') || '';
   document.body.className = (wp + ' ' + th).trim();
 }
+const SS_MODES = [['Random', 'random'], ['3D Pipes', 'pipes'], ['Starfield', 'stars'], ['None', 'off']];
+const SS_WAITS = [1, 2, 5, 10];
 function openDisplayProps() {
   const wp = localStorage.getItem('timetracker_wallpaper') || '';
   const th = localStorage.getItem('timetracker_theme') || '';
@@ -2979,10 +3105,21 @@ function openDisplayProps() {
     '<div class="tm-sec">Wallpaper</div>' +
     WALLPAPERS.map(w => '<div class="wa-item' + (wp === w[1] ? ' playing' : '') + '" data-wp="' + w[1] + '">' + w[0] + '</div>').join('') +
     '<div class="tm-sec">Color scheme</div>' +
-    THEMES.map(t => '<div class="wa-item' + (th === t[1] ? ' playing' : '') + '" data-th="' + t[1] + '">' + t[0] + '</div>').join('');
+    THEMES.map(t => '<div class="wa-item' + (th === t[1] ? ' playing' : '') + '" data-th="' + t[1] + '">' + t[0] + '</div>').join('') +
+    '<div class="tm-sec">Screen saver</div>' +
+    SS_MODES.map(m => '<div class="wa-item' + (ssCfg.mode === m[1] ? ' playing' : '') + '" data-ss="' + m[1] + '">' + m[0] + '</div>').join('') +
+    '<div class="tm-sec">Wait before starting</div>' +
+    SS_WAITS.map(w => '<div class="wa-item' + (ssCfg.wait === w ? ' playing' : '') + '" data-ssw="' + w + '">' + w + ' minute' + (w === 1 ? '' : 's') + '</div>').join('');
   $('dispBody').querySelectorAll('.wa-item').forEach(el => el.addEventListener('click', () => {
     if (el.dataset.wp !== undefined) localStorage.setItem('timetracker_wallpaper', el.dataset.wp);
-    else localStorage.setItem('timetracker_theme', el.dataset.th);
+    else if (el.dataset.th !== undefined) localStorage.setItem('timetracker_theme', el.dataset.th);
+    else if (el.dataset.ss !== undefined) {
+      ssCfg.mode = el.dataset.ss;
+      localStorage.setItem('timetracker_ss', JSON.stringify(ssCfg));
+    } else if (el.dataset.ssw !== undefined) {
+      ssCfg.wait = +el.dataset.ssw;
+      localStorage.setItem('timetracker_ss', JSON.stringify(ssCfg));
+    }
     applyLook();
     openDisplayProps(); // refresh selection marks
   }));
@@ -3064,6 +3201,354 @@ document.addEventListener('keydown', e => {
 $('smNotepad').addEventListener('click', () => { closeStart(); openNotepad(null); });
 $('smPaint').addEventListener('click', () => { closeStart(); openPaint(null); });
 $('smTaskmgr').addEventListener('click', () => { closeStart(); openTaskMgr(); });
+$('smSolitaire').addEventListener('click', () => { closeStart(); openSolitaire(); });
+
+// --- Internet Explorer (the finest of the fake web, ca. 2003) ---
+let ieHist = [], iePos = -1, ieQuery = '';
+const IE_PAGES = {
+  home: () => ({
+    url: 'http://www.askjeeves2003.com/',
+    title: 'Ask Jeeves 2003',
+    html: '<div style="text-align:center; font-family:\'Times New Roman\', serif">' +
+      '<h1 style="color:#0046D5; margin-bottom:4px">Ask Jeeves&trade; 2003</h1>' +
+      '<p style="color:#555">Have a question? Jeeves has the answer!</p>' +
+      '<p style="margin:14px 0"><input id="ieSearch" style="width:240px; border:1px solid #7F9DB9; padding:4px"> ' +
+      '<button id="ieSearchBtn">Ask!</button></p>' +
+      '<p style="color:#555; margin-top:18px">Popular questions:</p>' +
+      '<p><span class="ielink" data-nav="excuses">Top 10 excuses for leaving the office early</span></p>' +
+      '<p><span class="ielink" data-nav="ram">Where can I download more RAM?</span></p>' +
+      '<p><span class="ielink" data-nav="geo">Dave\'s AWESOME homepage</span></p>' +
+      '<p style="margin-top:22px; color:#999; font-size:10px">Best viewed in 800x600 \u00B7 &copy; 2003</p></div>'
+  }),
+  results: () => ({
+    url: 'http://www.askjeeves2003.com/ask?q=' + encodeURIComponent(ieQuery),
+    title: 'Results for "' + ieQuery + '"',
+    html: '<p style="color:#555">Jeeves found <b>1,204,882</b> answers for <b>"' + esc(ieQuery) + '"</b> in 47 seconds:</p><hr>' +
+      '<p><span class="ielink" data-nav="excuses">Top 10 excuses for leaving the office early</span><br>' +
+      '<span style="color:#008000; font-size:10px">www.officefreedom.geocities.com/excuses.htm</span></p>' +
+      '<p><span class="ielink" data-nav="ram">DOWNLOAD MORE RAM (100% free, no virus)</span><br>' +
+      '<span style="color:#008000; font-size:10px">www.downloadmoreram.com</span></p>' +
+      '<p><span class="ielink" data-nav="geo">Dave\'s AWESOME homepage - now with 3 MIDI files</span><br>' +
+      '<span style="color:#008000; font-size:10px">www.geocities.com/~xXdaveXx</span></p>' +
+      '<p><span class="ielink" data-act="flash">The exact answer to your question</span><br>' +
+      '<span style="color:#008000; font-size:10px">requires Macromedia Flash Player 6</span></p>'
+  }),
+  excuses: () => ({
+    url: 'http://officefreedom.geocities.com/excuses.htm',
+    title: 'Top 10 Office Excuses',
+    html: '<h2 style="color:#C00000">Top 10 excuses for leaving early</h2><ol>' +
+      ['My tracker says I can leave now (show them the app)',
+       'The build is running, it needs privacy',
+       'I have a meeting with Dr. Away',
+       'My chair warranty expires today',
+       'Mercury is in retrograde and so am I',
+       'Fire drill (at my house)',
+       'The office coffee has bested me',
+       'I am syncing with a server in another timezone',
+       'My screensaver started, legally I am gone',
+       'I finished my 8 hours \u2014 the boldest excuse of all'
+      ].map(x => '<li style="margin-bottom:6px">' + x + '</li>').join('') + '</ol>' +
+      '<p><span class="ielink" data-nav="home">&#8592; Back to Ask Jeeves</span></p>'
+  }),
+  ram: () => ({
+    url: 'http://www.downloadmoreram.com/',
+    title: 'Download More RAM',
+    html: '<div style="text-align:center">' +
+      '<h1 class="blink" style="color:#F00">DOWNLOAD MORE RAM!!!</h1>' +
+      '<p>100% free! 100% real! Works on ALL computers!</p>' +
+      '<p style="margin:16px 0"><button data-act="flash" style="font-size:14px; padding:8px 18px">&#11015;&#65039; Download 512 MB RAM</button></p>' +
+      '<p style="color:#555; font-size:10px">14,203,997 satisfied customers. RAM is delivered by email.</p>' +
+      '<p><span class="ielink" data-nav="home">&#8592; Back to Ask Jeeves</span></p></div>'
+  }),
+  geo: () => ({
+    url: 'http://www.geocities.com/~xXdaveXx/',
+    title: "Dave's AWESOME homepage",
+    html: '<div style="font-family:\'Comic Sans MS\', cursive; text-align:center; background:#000; color:#0F0; padding:14px; margin:-14px">' +
+      '<h2 class="blink" style="color:#FF0">~*~ WELCOME TO DAVE\'S PAGE ~*~</h2>' +
+      '<p style="color:#F0F">&#128679; UNDER CONSTRUCTION SINCE 1999 &#128679;</p>' +
+      '<p>Hi I am Dave from accounting!! This is my page about me and my cat Mr. Spreadsheet.</p>' +
+      '<p style="color:#0FF">You are visitor number: <b>000042</b></p>' +
+      '<p><span class="ielink" style="color:#FF0" data-act="guest">&#128221; Sign my guestbook!!</span></p>' +
+      '<p><span class="ielink" style="color:#FF0" data-nav="home">&#8592; Back to Ask Jeeves</span></p>' +
+      '<p style="font-size:10px; color:#888">(MIDI autoplay blocked by your browser. You are welcome.)</p></div>'
+  })
+};
+function ieGoTo(id, fromHistory) {
+  if (!fromHistory) {
+    ieHist = ieHist.slice(0, iePos + 1);
+    ieHist.push(id);
+    iePos = ieHist.length - 1;
+  }
+  const p = IE_PAGES[id]();
+  $('ieTitle').textContent = p.title + ' - Microsoft Internet Explorer';
+  $('ieAddr').value = p.url;
+  $('ieBody').innerHTML = p.html;
+  $('ieBack').disabled = iePos <= 0;
+  $('ieFwd').disabled = iePos >= ieHist.length - 1;
+}
+function ieSearch() {
+  const q = ($('ieSearch') && $('ieSearch').value.trim()) || '';
+  if (!q) return;
+  ieQuery = q;
+  ieGoTo('results');
+}
+$('ieBody').addEventListener('click', e => {
+  const nav = e.target.closest('[data-nav]');
+  if (nav) return ieGoTo(nav.dataset.nav);
+  if (e.target.closest('#ieSearchBtn')) return ieSearch();
+  const act = e.target.closest('[data-act]');
+  if (!act) return;
+  if (act.dataset.act === 'guest') showError('The guestbook is full. (3 entries)\nPlease try again in 2004.');
+  if (act.dataset.act === 'flash') showError('This content requires Macromedia Flash Player 6.\nEstimated download time on 56k: 11 hours, 24 minutes.');
+});
+$('ieBody').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'ieSearch') ieSearch();
+});
+$('ieBack').addEventListener('click', () => { if (iePos > 0) { iePos--; ieGoTo(ieHist[iePos], true); } });
+$('ieFwd').addEventListener('click', () => { if (iePos < ieHist.length - 1) { iePos++; ieGoTo(ieHist[iePos], true); } });
+$('ieHome').addEventListener('click', () => ieGoTo('home'));
+$('ieGo').addEventListener('click', () => showError('The address bar is decorative.\nJeeves decides where you go.'));
+$('ieX').addEventListener('click', () => { $('ieWindow').style.display = 'none'; });
+function openIE() {
+  $('ieWindow').style.display = 'block';
+  if (iePos < 0) ieGoTo('home');
+}
+
+// --- Solitaire (Klondike, draw one) ---
+const SOL_SUITS = ['\u2665', '\u2666', '\u2660', '\u2663']; // 0-1 red, 2-3 black
+const SOL_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+let sol = null, solIv = null;
+function solNew() {
+  const deck = [];
+  for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ r: r, s: s, up: false });
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  const t = [];
+  for (let i = 0; i < 7; i++) {
+    t.push(deck.splice(0, i + 1));
+    t[i][t[i].length - 1].up = true;
+  }
+  sol = { t: t, stock: deck, waste: [], f: [[], [], [], []], sel: null, moves: 0, start: Date.now(), won: false };
+  clearInterval(solIv);
+  solIv = setInterval(() => {
+    if (sol && !sol.won && $('solWindow').style.display === 'block') solStatus();
+  }, 1000);
+  solRender();
+}
+function solStatus() {
+  $('solStatus').textContent = 'Moves: ' + sol.moves + '  \u00B7  ' + Math.floor((Date.now() - sol.start) / 1000) + 's';
+}
+function solCardHtml(c, loc) {
+  if (!c.up) return '<div class="scard back" data-loc="' + loc + '"></div>';
+  const selCls = sol.sel && sol.sel.key === loc ? ' sel' : '';
+  return '<div class="scard' + (c.s < 2 ? ' red' : '') + selCls + '" data-loc="' + loc + '">' +
+    SOL_RANKS[c.r - 1] + SOL_SUITS[c.s] +
+    '<span class="sc-big">' + SOL_SUITS[c.s] + '</span></div>';
+}
+function solRender() {
+  const s = sol;
+  let html = '<div class="sol-row">';
+  html += s.stock.length
+    ? '<div class="scard back" data-loc="s"></div>'
+    : '<div class="sol-empty" data-loc="s">\u21BA</div>';
+  const wTop = s.waste[s.waste.length - 1];
+  html += wTop ? solCardHtml(wTop, 'w') : '<div class="sol-empty"></div>';
+  html += '<div style="width:62px"></div>';
+  for (let i = 0; i < 4; i++) {
+    const fTop = s.f[i][s.f[i].length - 1];
+    html += fTop
+      ? solCardHtml(fTop, 'f:' + i)
+      : '<div class="sol-empty" data-loc="f:' + i + '">' + SOL_SUITS[i] + '</div>';
+  }
+  html += '</div><div class="sol-cols">';
+  for (let c = 0; c < 7; c++) {
+    html += '<div class="sol-col">';
+    if (!s.t[c].length) html += '<div class="sol-empty" data-loc="t:' + c + ':-1"></div>';
+    s.t[c].forEach((card, i) => { html += solCardHtml(card, 't:' + c + ':' + i); });
+    html += '</div>';
+  }
+  html += '</div>';
+  $('solBody').innerHTML = html;
+  solStatus();
+}
+function solSelCards() {
+  const s = sol;
+  if (!s.sel) return null;
+  if (s.sel.key === 'w') return s.waste.length ? [s.waste[s.waste.length - 1]] : null;
+  return s.t[s.sel.col].slice(s.sel.idx);
+}
+function solRemoveSel() {
+  const s = sol;
+  let cards;
+  if (s.sel.key === 'w') {
+    cards = [s.waste.pop()];
+  } else {
+    cards = s.t[s.sel.col].splice(s.sel.idx);
+    const pile = s.t[s.sel.col];
+    if (pile.length && !pile[pile.length - 1].up) pile[pile.length - 1].up = true;
+  }
+  return cards;
+}
+function solTryMoveToCol(col) {
+  const s = sol;
+  const cards = solSelCards();
+  if (!cards || !cards.length || !cards[0]) return false;
+  if (s.sel.key !== 'w' && s.sel.col === col) return false;
+  const dest = s.t[col];
+  const head = cards[0];
+  const ok = dest.length
+    ? (dest[dest.length - 1].up &&
+       dest[dest.length - 1].r === head.r + 1 &&
+       ((dest[dest.length - 1].s < 2) !== (head.s < 2)))
+    : head.r === 13;
+  if (!ok) return false;
+  dest.push.apply(dest, solRemoveSel());
+  s.sel = null;
+  s.moves++;
+  solRender();
+  return true;
+}
+function solTryFoundation(fi) {
+  const s = sol;
+  const cards = solSelCards();
+  if (!cards || cards.length !== 1) { s.sel = null; return solRender(); }
+  const c = cards[0];
+  if (c.s !== fi || c.r !== s.f[fi].length + 1) { s.sel = null; return solRender(); }
+  solRemoveSel();
+  s.f[fi].push(c);
+  s.sel = null;
+  s.moves++;
+  solCheckWin();
+  solRender();
+}
+function solClick(loc) {
+  const s = sol;
+  if (loc === 's') {
+    if (s.stock.length) {
+      const c = s.stock.pop();
+      c.up = true;
+      s.waste.push(c);
+    } else if (s.waste.length) {
+      s.stock = s.waste.reverse();
+      s.stock.forEach(c => { c.up = false; });
+      s.waste = [];
+    }
+    s.sel = null;
+    s.moves++;
+    return solRender();
+  }
+  if (loc === 'w') {
+    if (!s.waste.length) return;
+    s.sel = (s.sel && s.sel.key === 'w') ? null : { key: 'w' };
+    return solRender();
+  }
+  if (loc.indexOf('f:') === 0) {
+    if (s.sel) solTryFoundation(+loc.slice(2));
+    return;
+  }
+  const parts = loc.split(':');
+  const col = +parts[1], idx = +parts[2];
+  const pile = s.t[col];
+  if (idx >= 0 && !pile[idx].up) {
+    if (idx === pile.length - 1) {
+      pile[idx].up = true;
+      s.moves++;
+      solRender();
+    }
+    return;
+  }
+  if (s.sel && solTryMoveToCol(col)) return;
+  if (idx >= 0) {
+    const key = 't:' + col + ':' + idx;
+    s.sel = (s.sel && s.sel.key === key) ? null : { key: key, col: col, idx: idx };
+  } else {
+    s.sel = null;
+  }
+  solRender();
+}
+function solAuto(loc) {
+  const s = sol;
+  let c = null, fromCol = -1;
+  if (loc === 'w' && s.waste.length) {
+    c = s.waste[s.waste.length - 1];
+  } else if (loc.indexOf('t:') === 0) {
+    const col = +loc.split(':')[1];
+    const pile = s.t[col];
+    if (pile.length && pile[pile.length - 1].up) {
+      c = pile[pile.length - 1];
+      fromCol = col;
+    }
+  }
+  if (!c || c.r !== s.f[c.s].length + 1) return;
+  if (fromCol < 0) s.waste.pop();
+  else {
+    s.t[fromCol].pop();
+    const pile = s.t[fromCol];
+    if (pile.length && !pile[pile.length - 1].up) pile[pile.length - 1].up = true;
+  }
+  s.f[c.s].push(c);
+  s.sel = null;
+  s.moves++;
+  solCheckWin();
+  solRender();
+}
+function solCheckWin() {
+  if (!sol.won && sol.f.every(f => f.length === 13)) {
+    sol.won = true;
+    clearInterval(solIv);
+    const secs = Math.floor((Date.now() - sol.start) / 1000);
+    award('solwin');
+    updateScore('Solitaire', secs, true);
+    tada();
+    solitaireWin();
+    showBalloon('\uD83C\uDCCF You won Solitaire in ' + sol.moves + ' moves and ' + secs + 's!');
+  }
+}
+$('solBody').addEventListener('click', e => {
+  const el = e.target.closest('[data-loc]');
+  if (el && sol && !sol.won) solClick(el.dataset.loc);
+});
+$('solBody').addEventListener('dblclick', e => {
+  const el = e.target.closest('[data-loc]');
+  if (el && sol && !sol.won) solAuto(el.dataset.loc);
+});
+$('solNewBtn').addEventListener('click', solNew);
+$('solX').addEventListener('click', () => { $('solWindow').style.display = 'none'; });
+function openSolitaire() {
+  $('solWindow').style.display = 'block';
+  if (!sol) solNew();
+}
+
+// --- Start menu: Win key + keyboard navigation ---
+let smIndex = -1;
+function smItemsList() { return [...document.querySelectorAll('#startMenu .sm-item')]; }
+function smHighlight() {
+  smItemsList().forEach((el, i) => el.classList.toggle('kbd-sel', i === smIndex));
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Meta') {
+    // Win key (the OS may swallow it; the start button always works)
+    e.preventDefault();
+    const sm = $('startMenu');
+    smIndex = -1;
+    smHighlight();
+    sm.style.display = sm.style.display === 'block' ? 'none' : 'block';
+    return;
+  }
+  if ($('startMenu').style.display !== 'block') return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const items = smItemsList();
+    smIndex = (smIndex + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+    smHighlight();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const items = smItemsList();
+    if (smIndex >= 0 && items[smIndex]) items[smIndex].click();
+  }
+});
 
 // XP-style right-click menu
 function showCtx(items, x, y) {
@@ -3253,7 +3738,11 @@ function shutdownChime() {
 })();
 
 // --- Start menu ---
-function closeStart() { $('startMenu').style.display = 'none'; }
+function closeStart() {
+  $('startMenu').style.display = 'none';
+  smIndex = -1;
+  document.querySelectorAll('#startMenu .sm-item.kbd-sel').forEach(el => el.classList.remove('kbd-sel'));
+}
 document.querySelector('.start-btn').addEventListener('click', e => {
   e.stopPropagation();
   const sm = $('startMenu');
@@ -3569,8 +4058,10 @@ function showNudge() {
 }
 $('msnClose').addEventListener('click', () => { $('msnToast').style.display = 'none'; });
 
-// --- Screensaver (after 2 min idle) ---
+// --- Screensaver (mode + idle delay configurable in Display Properties) ---
 let lastActivity = Date.now(), ssOn = false, ssRAF = null;
+let ssCfg = { mode: 'random', wait: 2 };
+try { ssCfg = Object.assign(ssCfg, JSON.parse(localStorage.getItem('timetracker_ss')) || {}); } catch (e) { /* defaults */ }
 ['mousemove', 'keydown', 'pointerdown'].forEach(ev =>
   document.addEventListener(ev, () => {
     lastActivity = Date.now();
@@ -3578,7 +4069,7 @@ let lastActivity = Date.now(), ssOn = false, ssRAF = null;
   })
 );
 setInterval(() => {
-  if (!ssOn && Date.now() - lastActivity > 120000) startScreensaver();
+  if (ssCfg.mode !== 'off' && !ssOn && Date.now() - lastActivity > ssCfg.wait * 60000) startScreensaver();
 }, 5000);
 function startScreensaver() {
   ssOn = true;
@@ -3589,7 +4080,8 @@ function startScreensaver() {
   const c = cv.getContext('2d');
   c.fillStyle = '#000';
   c.fillRect(0, 0, cv.width, cv.height);
-  if (Math.random() < 0.5) runStarfield(cv, c);
+  const mode = ssCfg.mode === 'random' ? (Math.random() < 0.5 ? 'stars' : 'pipes') : ssCfg.mode;
+  if (mode === 'stars') runStarfield(cv, c);
   else runPipes(cv, c);
 }
 function runStarfield(cv, c) {
@@ -3670,7 +4162,26 @@ function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   shutdownChime();
-  setTimeout(() => { $('shutdownScreen').style.display = 'flex'; }, 700);
+  // Windows Update prank first, obviously
+  setTimeout(() => {
+    $('updateScreen').style.display = 'flex';
+    let n = 3, pct = 0;
+    $('usText').textContent = 'Installing update ' + n + ' of 847,479...';
+    const iv = setInterval(() => {
+      pct += 2 + Math.random() * 9;
+      if (pct >= 100) {
+        pct = 0;
+        n++;
+        $('usText').textContent = 'Installing update ' + n + ' of 847,479...';
+      }
+      $('usFill').style.width = Math.min(100, pct) + '%';
+    }, 300);
+    setTimeout(() => {
+      clearInterval(iv);
+      $('updateScreen').style.display = 'none';
+      $('shutdownScreen').style.display = 'flex';
+    }, 7000);
+  }, 700);
 }
 $('shutdownScreen').addEventListener('click', () => location.reload());
 
@@ -4087,12 +4598,14 @@ const ACH_NAMES = {
   perfectweek: 'Perfect Week \u2014 Mon to Fri, all on target',
   overtime5: 'Overtime Warrior \u2014 +5h net this month',
   hundred: '100-Hour Club \u2014 100h worked in one month',
-  sweeper: 'Minesweeper Champion \u2014 cleared the field'
+  sweeper: 'Minesweeper Champion \u2014 cleared the field',
+  solwin: 'Solitaire Master \u2014 won a game of Solitaire'
 };
 const ACH_ICONS = {
   earlybird: '\uD83D\uDC26', nightowl: '\uD83E\uDD89', marathon: '\uD83C\uDFC3',
   streak5: '\uD83D\uDCC5', streak10: '\uD83D\uDD25', perfectweek: '\u2B50',
-  overtime5: '\u2694\uFE0F', hundred: '\uD83D\uDCAF', sweeper: '\uD83D\uDCA3'
+  overtime5: '\u2694\uFE0F', hundred: '\uD83D\uDCAF', sweeper: '\uD83D\uDCA3',
+  solwin: '\uD83C\uDCCF'
 };
 function award(id) {
   if (achievements[id]) return;
@@ -4419,6 +4932,11 @@ function installToolbar() {
 let lastEsc = 0;
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape' || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if ($('startMenu').style.display === 'block') {
+    closeStart();
+    lastEsc = 0;
+    return;
+  }
   if ($('editModal').style.display === 'flex') {
     $('editModal').style.display = 'none';
     lastEsc = 0;
@@ -5410,7 +5928,9 @@ const WIN_REGISTRY = [
   ['notepadWindow', '\uD83D\uDCC4 Notepad'],
   ['paintWindow', '\uD83C\uDFA8 Paint'],
   ['taskmgrWindow', '\uD83D\uDCCB Task Manager'],
-  ['dispWindow', '\uD83D\uDDA5\uFE0F Display']
+  ['dispWindow', '\uD83D\uDDA5\uFE0F Display'],
+  ['ieWindow', '\uD83C\uDF10 Internet Explorer'],
+  ['solWindow', '\uD83C\uDCCF Solitaire']
 ];
 let zTop = 90, lastFocused = null;
 function focusWin(win) {
