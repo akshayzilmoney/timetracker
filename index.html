@@ -2657,17 +2657,19 @@ function idbDel(key) {
   }));
 }
 
-function buildBackupJson() {
-  const out = { _app: 'timetracker-backup', user: currentUser, exported: new Date().toISOString() };
+function buildBackupJsonFor(name) {
+  const kfor = b => (name === users[0] ? b : b + '::' + name);
+  const out = { _app: 'timetracker-backup', user: name, exported: new Date().toISOString() };
   BASE_KEYS.forEach(b => {
-    const v = lsGet(b);
+    const v = localStorage.getItem(kfor(b));
     if (v !== null) out[b] = v;
   });
-  // The PIN (hashed) lives in the user's chosen backup file, so it follows the file
-  const pv = localStorage.getItem(pinKey(currentUser));
+  // The password hash lives in the user's chosen backup file, so it follows the file
+  const pv = localStorage.getItem(pinKey(name));
   if (pv) out.pin = pv;
   return JSON.stringify(out, null, 2);
 }
+function buildBackupJson() { return buildBackupJsonFor(currentUser); }
 
 function scheduleAutoBackup() {
   if (!fsHandle || !fsGranted) return;
@@ -2748,22 +2750,20 @@ function updateAutoBackupUi() {
 }
 // Change / set / remove the current profile's PIN (asks for the old one first)
 $('setPin').addEventListener('click', () => {
-  const setNew = () => askPin('New PIN for ' + currentUser + ' (leave empty to remove the PIN):', pin => {
+  const setNew = () => askPin('New password for ' + currentUser + ':', pin => {
     pin = (pin || '').trim();
-    if (!pin) {
-      localStorage.removeItem(pinKey(currentUser));
-      return showBalloon('PIN removed \u2014 ' + currentUser + ' now logs in without one.');
-    }
-    askPin('Confirm new PIN:', async pin2 => {
-      if (pin2 !== pin) return showError('PINs do not match. PIN was not changed.');
+    if (!pin) return showError('A password is required \u2014 it cannot be removed.');
+    askPin('Confirm new password:', async pin2 => {
+      if (pin2 !== pin) return showError('Passwords do not match. Nothing was changed.');
       localStorage.setItem(pinKey(currentUser), await hashPin(pin));
-      showBalloon('\uD83D\uDD12 PIN updated (stored only in this browser).');
+      scheduleAutoBackup(); // push the new hash into the backup file too
+      showBalloon('\uD83D\uDD12 Password updated.');
     });
   });
   if (hasPin(currentUser)) {
-    askPin('Enter current PIN:', async pin => {
+    askPin('Enter current password:', async pin => {
       if (await hashPin(pin) === localStorage.getItem(pinKey(currentUser))) setNew();
-      else showError('Incorrect PIN.');
+      else showError('Incorrect password.');
     });
   } else {
     setNew();
@@ -2958,38 +2958,30 @@ async function hashPin(pin) {
 }
 function askPin(msg, cb) { showPrompt(msg, '', cb, true); }
 
-// Gate every profile switch behind the PIN (or offer one-time setup)
+// Gate every profile switch behind the password. Profiles without one are
+// forced through the Security window first — there is no passwordless login.
 function requestLogin(user) {
   if (loggedIn) return;
   if (hasPin(user)) {
-    askPin('Enter PIN for ' + user + ':', async pin => {
+    askPin('Enter password for ' + user + ':', async pin => {
       if (!pin) return;
       if (await hashPin(pin) === localStorage.getItem(pinKey(user))) {
         login(user);
       } else {
-        showError('Incorrect PIN. Access denied.');
+        showError('Incorrect password. Access denied.');
       }
     });
   } else {
-    // One-time setup offer for profiles that don't have a PIN yet
-    askPin('Set a PIN for ' + user + '? (one-time setup, stored only on this computer)\nLeave empty to continue without a PIN:', async pin => {
-      pin = (pin || '').trim();
-      if (!pin) return login(user);
-      askPin('Confirm PIN:', async pin2 => {
-        if (pin2 !== pin) return showError('PINs do not match. Try logging in again.');
-        localStorage.setItem(pinKey(user), await hashPin(pin));
-        showBalloon('\uD83D\uDD12 PIN set for ' + user + ' \u2014 it will be asked on every login.');
-        login(user);
-      });
-    });
+    suOnCreated = null;
+    openUserSetup(user, 'secure'); // mandatory one-time setup, then logs in
   }
 }
 
-// Shared "create a user" flow: name -> optional PIN -> confirm PIN
 // --- User Setup window: backup selection (left pane) + password (right pane) ---
 // A user only comes into existence once the backup location is chosen AND the
 // password is set; the password hash is written INTO the chosen backup file.
-let suName = null, suHandle = null, suOnCreated = null;
+// mode 'create' = brand-new user, mode 'secure' = existing user without a password.
+let suName = null, suHandle = null, suOnCreated = null, suMode = 'create';
 
 function promptNewUser(onCreated) {
   showPrompt('New user name:', '', name => {
@@ -2997,20 +2989,35 @@ function promptNewUser(onCreated) {
     if (!name) return;
     if (users.includes(name)) return showError('That user already exists.');
     suOnCreated = onCreated;
-    openUserSetup(name);
+    openUserSetup(name, 'create');
   });
 }
 
-function openUserSetup(name) {
+function openUserSetup(name, mode) {
   suName = name;
+  suMode = mode || 'create';
   suHandle = null;
-  $('suUserLabel').textContent = 'New user: ' + name;
+  $('setupWindow').querySelector('.title-text').textContent =
+    suMode === 'secure' ? 'Security Required \u2014 ' + name : 'User Setup \u2014 Security';
+  $('suUserLabel').textContent =
+    suMode === 'secure' ? 'This profile needs a password before logging in.' : 'New user: ' + name;
+  $('suCreate').textContent = suMode === 'secure' ? 'Save & Log In' : 'Create User';
   $('suPass1').value = '';
   $('suPass2').value = '';
   $('suBackupStatus').textContent = window.showSaveFilePicker
     ? 'No backup selected'
     : 'Not available in this browser \u2014 the password will be stored in the browser only';
   suUpdate();
+  // An existing profile may already have an auto-backup file: reuse it
+  if (suMode === 'secure') {
+    idbGet('fshandle::' + name).then(h => {
+      if (h && suName === name) {
+        suHandle = h;
+        $('suBackupStatus').textContent = '\u2714 ' + h.name;
+        suUpdate();
+      }
+    }).catch(() => { /* none stored */ });
+  }
   $('setupWindow').style.display = 'block';
   $('suBackupBtn').focus();
 }
@@ -3043,33 +3050,37 @@ $('suBackupBtn').addEventListener('click', async () => {
 });
 
 $('suCreate').addEventListener('click', async () => {
-  const name = suName;
+  const name = suName, mode = suMode;
   const pass = $('suPass1').value.trim();
-  if (!name || !pass || pass !== $('suPass2').value || users.includes(name)) return;
+  if (!name || !pass || pass !== $('suPass2').value) return;
+  if (mode === 'create' && users.includes(name)) return;
   const hash = await hashPin(pass);
   localStorage.setItem(pinKey(name), hash);
-  users.push(name);
-  localStorage.setItem('timetracker_users', JSON.stringify(users));
+  if (mode === 'create') {
+    users.push(name);
+    localStorage.setItem('timetracker_users', JSON.stringify(users));
+  }
   if (suHandle) {
     try {
       await idbSet('fshandle::' + name, suHandle); // becomes this user's auto-backup file
-      const w = await suHandle.createWritable();   // password lives in the backup from second one
-      await w.write(JSON.stringify({
-        _app: 'timetracker-backup',
-        user: name,
-        exported: new Date().toISOString(),
-        pin: hash
-      }, null, 2));
+      try { await suHandle.requestPermission({ mode: 'readwrite' }); } catch (e) { /* older API */ }
+      const w = await suHandle.createWritable();   // password + data live in the backup
+      await w.write(buildBackupJsonFor(name));
       await w.close();
     } catch (e) { /* write refused; password still active in this browser */ }
   }
   $('setupWindow').style.display = 'none';
   renderLogin();
-  showBalloon('\uD83D\uDD12 User ' + name + ' created' + (suHandle ? ' \u2014 password stored in ' + suHandle.name : '') + '.');
+  showBalloon('\uD83D\uDD12 ' + (mode === 'secure' ? 'Password for ' + name + ' saved' : 'User ' + name + ' created') +
+    (suHandle ? ' \u2014 stored in ' + suHandle.name : '') + '.');
   const cb = suOnCreated;
   suName = null;
   suOnCreated = null;
-  if (cb) cb(name);
+  if (mode === 'secure') {
+    login(name);
+  } else if (cb) {
+    cb(name);
+  }
 });
 
 $('setupX').addEventListener('click', () => {
