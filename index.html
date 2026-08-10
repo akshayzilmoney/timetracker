@@ -1259,9 +1259,9 @@
   <p class="subtitle" id="subtitle">Target: 8 working hours. Load your punch JSON to see when you can leave.</p>
 
   <div class="profile-strip">
-    <div class="avatar" id="profileAvatar"><span id="avatarLetter">A</span></div>
+    <div class="avatar" id="profileAvatar"><span id="avatarLetter">?</span></div>
     <div>
-      <div class="profile-name" id="profileName">Akshay</div>
+      <div class="profile-name" id="profileName">No user</div>
       <div class="profile-sub">Logged in</div>
     </div>
     <div class="xp-wrap">
@@ -1421,7 +1421,7 @@
 </div>
 
 <div id="startMenu">
-  <div class="sm-head"><div class="avatar" id="smAvatar">A</div><span id="smUser">Akshay</span></div>
+  <div class="sm-head"><div class="avatar" id="smAvatar">?</div><span id="smUser">No user</span></div>
   <div class="sm-items">
     <div class="sm-item" id="smHours">&#128202; My Work Hours</div>
     <div class="sm-item" id="smTrophies">&#127942; Achievements</div>
@@ -1720,15 +1720,23 @@ function esc(s) {
 
 // --- Multi-profile storage ---
 // The first (legacy) user keeps un-prefixed keys so pre-existing data still works.
+// There is NO default user: the login screen starts empty until one is created.
 let users = [];
 try { users = JSON.parse(localStorage.getItem('timetracker_users')) || []; } catch (e) { users = []; }
-if (!users.length) users = ['Akshay'];
+// Clean up the old hardcoded "Akshay" default, but only if it was never
+// actually used (no data, no loaded punches, no password).
+if (users.length === 1 && users[0] === 'Akshay'
+    && !localStorage.getItem('timetracker_history')
+    && !localStorage.getItem('timetracker_json')
+    && !localStorage.getItem('timetracker_pin::Akshay')) {
+  users = [];
+}
 localStorage.setItem('timetracker_users', JSON.stringify(users));
-let currentUser = localStorage.getItem('timetracker_lastuser') || users[0];
-if (!users.includes(currentUser)) currentUser = users[0];
+let currentUser = localStorage.getItem('timetracker_lastuser');
+if (!users.includes(currentUser)) currentUser = users[0] || null;
 
 function storeKey(base) {
-  return currentUser === users[0] ? base : base + '::' + currentUser;
+  return !currentUser || currentUser === users[0] ? base : base + '::' + currentUser;
 }
 function lsGet(base) { return localStorage.getItem(storeKey(base)); }
 function lsSet(base, val) {
@@ -3139,6 +3147,9 @@ async function connectExistingUser() {
 // --- Login screen (multi-profile, with dial-up handshake) ---
 let loggedIn = false;
 function renderLogin() {
+  document.querySelector('.login-left').textContent = users.length
+    ? 'To begin, click your user name'
+    : 'Welcome! Create your user to begin';
   const c = $('loginAccts');
   c.innerHTML = users.map(u =>
     '<div class="login-acct" data-user="' + esc(u) + '">' +
@@ -3192,6 +3203,25 @@ $('dialup').addEventListener('click', () => {
 
 // Re-read every stored value for the current user and refresh the whole UI
 function loadUserState() {
+  if (!currentUser) {
+    // Blank slate: no profiles exist yet
+    history = {}; recycle = {}; achievements = {}; cds = {}; scores = {};
+    prestige = 0;
+    settings = { targetMin: 480, sound: true, volume: 100 };
+    fsHandle = null;
+    fsGranted = false;
+    clearInterval(timer);
+    data = null;
+    $('result').style.display = 'none';
+    $('loadedBar').style.display = 'none';
+    $('inputArea').style.display = 'block';
+    $('profileName').textContent = 'No user';
+    $('avatarLetter').textContent = '?';
+    $('smUser').textContent = 'No user';
+    $('smAvatar').textContent = '?';
+    renderMonth();
+    return;
+  }
   history = lsGetJSON(HISTORY_KEY, {});
   recycle = lsGetJSON(RECYCLE_KEY, {});
   achievements = lsGetJSON(ACH_KEY, {});
