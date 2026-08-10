@@ -1,5 +1,5 @@
 // Simple offline-first service worker for the Office Time Tracker PWA
-const CACHE = 'timetracker-v3';
+const CACHE = 'timetracker-v4';
 const ASSETS = ['./', 'index.html', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', e => {

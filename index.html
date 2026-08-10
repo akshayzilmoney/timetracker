@@ -1561,6 +1561,14 @@
     <div class="set-row"><label for="setTarget">Daily target (hours)</label><input id="setTarget" type="number" min="1" max="16" step="0.5"></div>
     <div class="set-row"><label for="setSound">Sound effects</label><input id="setSound" type="checkbox"></div>
     <div class="set-row"><label for="setVolume">Volume</label><input id="setVolume" type="range" min="0" max="100"></div>
+    <div class="set-row">
+      <label>Auto-backup to file</label>
+      <span>
+        <button id="setAbChoose" style="min-width:0; padding:3px 8px">Choose file&hellip;</button>
+        <button id="setAbOff" style="min-width:0; padding:3px 8px; display:none">Turn off</button>
+      </span>
+    </div>
+    <div id="abStatus" style="color:#555; margin-bottom:6px"></div>
     <div class="set-actions"><button id="setSave">OK</button><button id="setCancel">Cancel</button></div>
   </div>
 </div>
@@ -1649,8 +1657,14 @@ function storeKey(base) {
   return currentUser === users[0] ? base : base + '::' + currentUser;
 }
 function lsGet(base) { return localStorage.getItem(storeKey(base)); }
-function lsSet(base, val) { localStorage.setItem(storeKey(base), val); }
-function lsRemove(base) { localStorage.removeItem(storeKey(base)); }
+function lsSet(base, val) {
+  localStorage.setItem(storeKey(base), val);
+  scheduleAutoBackup(); // mirror every change to the auto-backup file (if enabled)
+}
+function lsRemove(base) {
+  localStorage.removeItem(storeKey(base));
+  scheduleAutoBackup();
+}
 function lsGetJSON(base, fallback) {
   try {
     const v = JSON.parse(lsGet(base));
@@ -2482,12 +2496,7 @@ function exportCsv() {
   showBalloon('History exported as CSV.');
 }
 function backupAll() {
-  const out = { _app: 'timetracker-backup', user: currentUser, exported: new Date().toISOString() };
-  BASE_KEYS.forEach(b => {
-    const v = lsGet(b);
-    if (v !== null) out[b] = v;
-  });
-  download('timetracker-backup-' + currentUser + '.json', JSON.stringify(out, null, 2), 'application/json');
+  download('timetracker-backup-' + currentUser + '.json', buildBackupJson(), 'application/json');
   showBalloon('Backup downloaded. Keep it somewhere safe \u2014 not on a floppy.');
 }
 function restoreBackup(file) {
@@ -2520,6 +2529,139 @@ function restoreBackup(file) {
   };
   r.readAsText(file);
 }
+
+// --- Auto-backup to a real file (File System Access API, Chrome/Edge) ---
+// The chosen file handle is kept in IndexedDB per profile; every storage change
+// rewrites the file (debounced). Pick a file inside OneDrive/Drive and the
+// backup follows you to every machine.
+let fsHandle = null, fsGranted = false, abTimer = null;
+
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('timetracker-fs', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('kv');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function idbSet(key, val) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(val, key);
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+function idbGet(key) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const q = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+  }));
+}
+function idbDel(key) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').delete(key);
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+
+function buildBackupJson() {
+  const out = { _app: 'timetracker-backup', user: currentUser, exported: new Date().toISOString() };
+  BASE_KEYS.forEach(b => {
+    const v = lsGet(b);
+    if (v !== null) out[b] = v;
+  });
+  return JSON.stringify(out, null, 2);
+}
+
+function scheduleAutoBackup() {
+  if (!fsHandle || !fsGranted) return;
+  clearTimeout(abTimer);
+  abTimer = setTimeout(autoBackupNow, 3000);
+}
+
+async function autoBackupNow() {
+  if (!fsHandle || !fsGranted) return;
+  try {
+    const w = await fsHandle.createWritable();
+    await w.write(buildBackupJson());
+    await w.close();
+    updateAutoBackupUi();
+  } catch (e) {
+    fsGranted = false;
+    updateAutoBackupUi();
+  }
+}
+
+async function chooseAutoBackupFile() {
+  if (!window.showSaveFilePicker) {
+    return showError('Auto-backup needs the File System Access API (Chrome or Edge). In other browsers, use Start \u2192 Backup All Data instead.');
+  }
+  try {
+    const handle = await showSaveFilePicker({
+      suggestedName: 'timetracker-autobackup-' + currentUser + '.json',
+      types: [{ description: 'Time Tracker backup', accept: { 'application/json': ['.json'] } }]
+    });
+    await idbSet('fshandle::' + currentUser, handle);
+    fsHandle = handle;
+    fsGranted = true;
+    await autoBackupNow();
+    showBalloon('\uD83D\uDCBE Auto-backup on \u2014 every change now saves to ' + handle.name);
+  } catch (e) { /* picker cancelled */ }
+  updateAutoBackupUi();
+}
+
+async function initAutoBackup() {
+  fsHandle = null;
+  fsGranted = false;
+  try { fsHandle = (await idbGet('fshandle::' + currentUser)) || null; } catch (e) { fsHandle = null; }
+  if (fsHandle) {
+    let p = 'prompt';
+    try { p = await fsHandle.queryPermission({ mode: 'readwrite' }); } catch (e) { /* API missing */ }
+    if (p === 'granted') {
+      fsGranted = true;
+      scheduleAutoBackup(); // bring the file up to date on startup
+    } else {
+      // Re-requesting permission needs a user gesture; do it on the next click
+      document.addEventListener('pointerdown', async function regrant() {
+        if (!fsHandle || fsGranted) return;
+        try {
+          if (await fsHandle.requestPermission({ mode: 'readwrite' }) === 'granted') {
+            fsGranted = true;
+            scheduleAutoBackup();
+            showBalloon('Auto-backup re-enabled: ' + fsHandle.name);
+          }
+        } catch (e) { /* denied */ }
+        updateAutoBackupUi();
+      }, { once: true });
+    }
+  }
+  updateAutoBackupUi();
+}
+
+function updateAutoBackupUi() {
+  const st = $('abStatus');
+  if (fsHandle) {
+    st.textContent = fsGranted
+      ? '\u2714 On \u2014 saving to ' + fsHandle.name
+      : '\u26A0\uFE0F Paused \u2014 click anywhere to re-authorize ' + fsHandle.name;
+    $('setAbOff').style.display = '';
+  } else {
+    st.textContent = 'Off \u2014 data lives only in this browser.';
+    $('setAbOff').style.display = 'none';
+  }
+}
+$('setAbChoose').addEventListener('click', chooseAutoBackupFile);
+$('setAbOff').addEventListener('click', async () => {
+  try { await idbDel('fshandle::' + currentUser); } catch (e) { /* ignore */ }
+  fsHandle = null;
+  fsGranted = false;
+  updateAutoBackupUi();
+  showBalloon('Auto-backup turned off.');
+});
 
 // --- Clippy ---
 let clipTimer = null;
@@ -2764,6 +2906,7 @@ function loadUserState() {
     $('inputArea').style.display = 'block';
   }
   renderMonth();
+  initAutoBackup();
 }
 
 function applyUserUi() {
@@ -3670,6 +3813,7 @@ function openSettings() {
   $('setTarget').value = settings.targetMin / 60;
   $('setSound').checked = settings.sound;
   $('setVolume').value = settings.volume;
+  updateAutoBackupUi();
   $('settingsWindow').style.display = 'block';
 }
 function cancelSettings() {
