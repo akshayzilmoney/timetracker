@@ -926,6 +926,51 @@
   /* --- multi-user login --- */
   #loginAccts { display: flex; flex-direction: column; gap: 6px; max-height: 72vh; overflow: auto; }
 
+  /* --- user setup window (backup + password), bottom-right, above login screen --- */
+  #setupWindow {
+    display: none;
+    position: fixed;
+    right: 20px;
+    bottom: 46px;
+    width: 400px;
+    background: #ECE9D8;
+    border: 1px solid #0831D9;
+    border-radius: 8px 8px 0 0;
+    box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+    z-index: 1900;
+    animation: winFade .15s ease-out;
+  }
+  #setupWindow .title-bar { border-radius: 7px 7px 0 0; }
+  .setup-body { display: flex; }
+  .setup-left {
+    width: 145px;
+    flex: none;
+    background: linear-gradient(180deg, #7AA1E6 0%, #6375D6 100%);
+    padding: 10px;
+    color: #fff;
+  }
+  .setup-left .setup-head { font-weight: bold; margin-bottom: 8px; text-shadow: 1px 1px 1px rgba(0,0,0,0.4); }
+  .setup-left button { width: 100%; min-width: 0; padding: 5px 6px; margin-bottom: 8px; }
+  .setup-left .setup-status { color: #D6DFF7; word-break: break-word; }
+  .setup-right { flex: 1; padding: 12px; }
+  .setup-right .setup-head { font-weight: bold; color: #0046D5; margin-bottom: 8px; }
+  .setup-right input {
+    width: 100%;
+    border: 1px solid #7F9DB9;
+    padding: 5px;
+    margin-bottom: 8px;
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+  }
+  #suUserLabel { margin-bottom: 8px; }
+  #suCreate { width: 100%; font-weight: bold; }
+  #suCreate:disabled { color: #888; cursor: default; }
+  #suHint { color: #555; margin-top: 6px; }
+  @media (max-width: 640px) {
+    #setupWindow { width: 96vw; right: 2vw; }
+    .setup-left { width: 118px; }
+  }
+
   /* --- prompt input in msgbox --- */
   #msgInputWrap { padding: 0 16px 12px; display: none; }
   #msgInput { width: 100%; border: 1px solid #7F9DB9; padding: 3px; font-family: Tahoma, sans-serif; font-size: 11px; }
@@ -1537,6 +1582,28 @@
         <input id="dmNote" maxlength="120" placeholder="Add a note for this day&hellip;">
         <button class="dash-btn" id="dmNoteSave">Save</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="setupWindow">
+  <div class="title-bar">
+    <span class="title-text">User Setup &#8212; Security</span>
+    <span class="title-buttons"><span class="tbtn close" id="setupX">&#10005;</span></span>
+  </div>
+  <div class="setup-body">
+    <div class="setup-left">
+      <div class="setup-head">Control Panel</div>
+      <button id="suBackupBtn">&#128193; Select backup&hellip;</button>
+      <div class="setup-status" id="suBackupStatus">No backup selected</div>
+    </div>
+    <div class="setup-right">
+      <div class="setup-head">Password</div>
+      <div id="suUserLabel"></div>
+      <input id="suPass1" type="password" placeholder="Password" maxlength="40">
+      <input id="suPass2" type="password" placeholder="Confirm password" maxlength="40">
+      <button id="suCreate" disabled>Create User</button>
+      <div id="suHint"></div>
     </div>
   </div>
 </div>
@@ -2543,6 +2610,8 @@ function restoreBackup(file) {
           lsSet(b, obj[b]);
         }
       });
+      // A PIN carried inside the backup file protects this profile here too
+      if (obj.pin) localStorage.setItem(pinKey(currentUser), obj.pin);
       loadUserState();
       showBalloon('Backup restored. History was merged with existing records.');
     });
@@ -2594,6 +2663,9 @@ function buildBackupJson() {
     const v = lsGet(b);
     if (v !== null) out[b] = v;
   });
+  // The PIN (hashed) lives in the user's chosen backup file, so it follows the file
+  const pv = localStorage.getItem(pinKey(currentUser));
+  if (pv) out.pin = pv;
   return JSON.stringify(out, null, 2);
 }
 
@@ -2914,27 +2986,143 @@ function requestLogin(user) {
 }
 
 // Shared "create a user" flow: name -> optional PIN -> confirm PIN
+// --- User Setup window: backup selection (left pane) + password (right pane) ---
+// A user only comes into existence once the backup location is chosen AND the
+// password is set; the password hash is written INTO the chosen backup file.
+let suName = null, suHandle = null, suOnCreated = null;
+
 function promptNewUser(onCreated) {
   showPrompt('New user name:', '', name => {
     name = name.trim();
     if (!name) return;
     if (users.includes(name)) return showError('That user already exists.');
-    askPin('Set a PIN for ' + name + ' (stored only on this computer).\nLeave empty for no PIN:', pin => {
-      pin = (pin || '').trim();
-      const finish = async () => {
-        if (pin) localStorage.setItem(pinKey(name), await hashPin(pin));
-        users.push(name);
-        localStorage.setItem('timetracker_users', JSON.stringify(users));
-        renderLogin();
-        onCreated(name);
-      };
-      if (!pin) return finish();
-      askPin('Confirm PIN:', pin2 => {
-        if (pin2 !== pin) return showError('PINs do not match. The user was not created.');
-        finish();
-      });
-    });
+    suOnCreated = onCreated;
+    openUserSetup(name);
   });
+}
+
+function openUserSetup(name) {
+  suName = name;
+  suHandle = null;
+  $('suUserLabel').textContent = 'New user: ' + name;
+  $('suPass1').value = '';
+  $('suPass2').value = '';
+  $('suBackupStatus').textContent = window.showSaveFilePicker
+    ? 'No backup selected'
+    : 'Not available in this browser \u2014 the password will be stored in the browser only';
+  suUpdate();
+  $('setupWindow').style.display = 'block';
+  $('suBackupBtn').focus();
+}
+
+function suUpdate() {
+  const p1 = $('suPass1').value.trim();
+  const p2 = $('suPass2').value;
+  const needFile = !!window.showSaveFilePicker;
+  const ready = p1 && p1 === p2 && (!needFile || suHandle);
+  $('suCreate').disabled = !ready;
+  $('suHint').textContent =
+    (needFile && !suHandle) ? '1. Select the backup location on the left first.'
+    : !p1 ? '2. Now enter a password.'
+    : p1 !== p2 ? 'Passwords do not match.'
+    : 'Ready \u2014 the password will be stored in the backup.';
+}
+$('suPass1').addEventListener('input', suUpdate);
+$('suPass2').addEventListener('input', suUpdate);
+
+$('suBackupBtn').addEventListener('click', async () => {
+  if (!window.showSaveFilePicker) return suUpdate();
+  try {
+    suHandle = await showSaveFilePicker({
+      suggestedName: 'timetracker-' + (suName || 'user') + '.json',
+      types: [{ description: 'Time Tracker backup', accept: { 'application/json': ['.json'] } }]
+    });
+    $('suBackupStatus').textContent = '\u2714 ' + suHandle.name;
+  } catch (e) { /* cancelled */ }
+  suUpdate();
+});
+
+$('suCreate').addEventListener('click', async () => {
+  const name = suName;
+  const pass = $('suPass1').value.trim();
+  if (!name || !pass || pass !== $('suPass2').value || users.includes(name)) return;
+  const hash = await hashPin(pass);
+  localStorage.setItem(pinKey(name), hash);
+  users.push(name);
+  localStorage.setItem('timetracker_users', JSON.stringify(users));
+  if (suHandle) {
+    try {
+      await idbSet('fshandle::' + name, suHandle); // becomes this user's auto-backup file
+      const w = await suHandle.createWritable();   // password lives in the backup from second one
+      await w.write(JSON.stringify({
+        _app: 'timetracker-backup',
+        user: name,
+        exported: new Date().toISOString(),
+        pin: hash
+      }, null, 2));
+      await w.close();
+    } catch (e) { /* write refused; password still active in this browser */ }
+  }
+  $('setupWindow').style.display = 'none';
+  renderLogin();
+  showBalloon('\uD83D\uDD12 User ' + name + ' created' + (suHandle ? ' \u2014 password stored in ' + suHandle.name : '') + '.');
+  const cb = suOnCreated;
+  suName = null;
+  suOnCreated = null;
+  if (cb) cb(name);
+});
+
+$('setupX').addEventListener('click', () => {
+  $('setupWindow').style.display = 'none';
+  suName = null;
+  suOnCreated = null;
+});
+
+// --- Connect an existing user from another browser/device via their backup file ---
+// The backup carries the user name, all data, and the password hash: entering a
+// matching password imports the profile and logs in. This is how a fresh browser
+// "knows" an existing user.
+async function connectExistingUser() {
+  if (!window.showOpenFilePicker) {
+    return showError('Connecting a backup file needs Chrome or Edge.\nIn this browser, log in and use Start \u2192 Restore Backup instead.');
+  }
+  let handle, obj;
+  try {
+    [handle] = await showOpenFilePicker({
+      types: [{ description: 'Time Tracker backup', accept: { 'application/json': ['.json'] } }]
+    });
+    obj = JSON.parse(await (await handle.getFile()).text());
+    if (obj._app !== 'timetracker-backup' || !obj.user) throw new Error('bad');
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    return showError('That is not a valid Time Tracker backup file.');
+  }
+  const name = obj.user;
+  const doImport = () => {
+    if (!users.includes(name)) {
+      users.push(name);
+      localStorage.setItem('timetracker_users', JSON.stringify(users));
+    }
+    const kfor = b => (name === users[0] ? b : b + '::' + name);
+    BASE_KEYS.forEach(b => { if (obj[b] !== undefined) localStorage.setItem(kfor(b), obj[b]); });
+    if (obj.pin) localStorage.setItem(pinKey(name), obj.pin);
+    idbSet('fshandle::' + name, handle).catch(() => {}); // keep the file as their auto-backup
+    renderLogin();
+  };
+  if (obj.pin) {
+    askPin('Enter the password for ' + name + ':', async pin => {
+      if (!pin) return;
+      if (await hashPin(pin) === obj.pin) {
+        doImport();
+        login(name);
+      } else {
+        showError('Incorrect password. This backup stays locked.');
+      }
+    });
+  } else {
+    doImport();
+    login(name);
+  }
 }
 
 // --- Login screen (multi-profile, with dial-up handshake) ---
@@ -2947,10 +3135,13 @@ function renderLogin() {
     '<div><div class="la-name">' + esc(u) + '</div><div class="la-sub">Time Tracker User</div></div></div>'
   ).join('') +
   '<div class="login-acct" id="loginAdd"><div class="avatar">+</div>' +
-  '<div><div class="la-name">Add User</div><div class="la-sub">Create a new profile</div></div></div>';
+  '<div><div class="la-name">Add User</div><div class="la-sub">Create a new profile</div></div></div>' +
+  '<div class="login-acct" id="loginConnect"><div class="avatar">&#128194;</div>' +
+  '<div><div class="la-name">Connect Existing User</div><div class="la-sub">Log in with your backup file</div></div></div>';
   c.querySelectorAll('.login-acct[data-user]').forEach(el =>
     el.addEventListener('click', () => requestLogin(el.dataset.user)));
   $('loginAdd').addEventListener('click', () => promptNewUser(() => {}));
+  $('loginConnect').addEventListener('click', connectExistingUser);
 }
 let dialIv = null, dialTo = null;
 function login(user) {
@@ -4360,6 +4551,8 @@ function makeDraggable(win) {
   function beginDrag(cx, cy) {
     const r = win.getBoundingClientRect();
     win.style.transform = 'none';
+    win.style.right = 'auto';
+    win.style.bottom = 'auto';
     win.style.left = r.left + 'px';
     win.style.top = r.top + 'px';
     return [cx - r.left, cy - r.top];
@@ -4446,6 +4639,7 @@ WIN_REGISTRY.forEach(([id]) => {
   }).observe(win, { attributes: true, attributeFilter: ['style'] });
 });
 makeDraggable($('lootWin'));
+makeDraggable($('setupWindow'));
 
 // Pause the Snake loop while the tab is hidden
 document.addEventListener('visibilitychange', () => {
