@@ -1565,6 +1565,10 @@
     <div class="set-row"><label for="setSound">Sound effects</label><input id="setSound" type="checkbox"></div>
     <div class="set-row"><label for="setVolume">Volume</label><input id="setVolume" type="range" min="0" max="100"></div>
     <div class="set-row">
+      <label>Profile PIN</label>
+      <button id="setPin" style="min-width:0; padding:3px 8px">Change&hellip;</button>
+    </div>
+    <div class="set-row">
       <label>Auto-backup to file</label>
       <span>
         <button id="setAbChoose" style="min-width:0; padding:3px 8px">Choose file&hellip;</button>
@@ -1873,12 +1877,14 @@ function showInfo(msg) {
   dingSound();
 }
 
-function showPrompt(msg, def, onOk) {
+function showPrompt(msg, def, onOk, masked) {
   promptCallback = onOk;
-  $('msgIcon').textContent = 'i';
+  $('msgIcon').textContent = masked ? '\uD83D\uDD12' : 'i';
   $('msgIcon').className = 'msg-icon q';
   $('msgText').textContent = msg;
   $('msgInputWrap').style.display = 'block';
+  $('msgInput').type = masked ? 'password' : 'text';
+  $('msgInput').inputMode = masked ? 'numeric' : '';
   $('msgInput').value = def || '';
   $('msgOk').style.display = '';
   $('msgYes').style.display = 'none';
@@ -2463,14 +2469,9 @@ $('restoreInput').addEventListener('change', e => {
 });
 $('smAddUser').addEventListener('click', () => {
   closeStart();
-  showPrompt('New user name:', '', name => {
-    name = name.trim();
-    if (!name) return;
-    if (users.includes(name)) return showError('That user already exists.');
-    users.push(name);
-    localStorage.setItem('timetracker_users', JSON.stringify(users));
-    renderLogin();
+  promptNewUser(name => {
     showConfirm('User "' + name + '" created. Switch to that profile now?', () => {
+      // The creator just set the PIN, so no need to ask for it again here
       waStop();
       loggedIn = false;
       login(name);
@@ -2673,6 +2674,30 @@ function updateAutoBackupUi() {
     $('setAbOff').style.display = 'none';
   }
 }
+// Change / set / remove the current profile's PIN (asks for the old one first)
+$('setPin').addEventListener('click', () => {
+  const setNew = () => askPin('New PIN for ' + currentUser + ' (leave empty to remove the PIN):', pin => {
+    pin = (pin || '').trim();
+    if (!pin) {
+      localStorage.removeItem(pinKey(currentUser));
+      return showBalloon('PIN removed \u2014 ' + currentUser + ' now logs in without one.');
+    }
+    askPin('Confirm new PIN:', async pin2 => {
+      if (pin2 !== pin) return showError('PINs do not match. PIN was not changed.');
+      localStorage.setItem(pinKey(currentUser), await hashPin(pin));
+      showBalloon('\uD83D\uDD12 PIN updated (stored only in this browser).');
+    });
+  });
+  if (hasPin(currentUser)) {
+    askPin('Enter current PIN:', async pin => {
+      if (await hashPin(pin) === localStorage.getItem(pinKey(currentUser))) setNew();
+      else showError('Incorrect PIN.');
+    });
+  } else {
+    setNew();
+  }
+});
+
 $('setAbChoose').addEventListener('click', chooseAutoBackupFile);
 $('setAbOff').addEventListener('click', async () => {
   try { await idbDel('fshandle::' + currentUser); } catch (e) { /* ignore */ }
@@ -2842,6 +2867,76 @@ function showBsod() {
   setTimeout(() => { $('bsod').style.display = 'none'; }, 2600);
 }
 
+// --- Profile PIN protection ---
+// The PIN (as a SHA-256 hash) lives ONLY in this browser's localStorage.
+// It is intentionally excluded from backups and never leaves the machine.
+function pinKey(user) { return 'timetracker_pin::' + user; }
+function hasPin(user) { return localStorage.getItem(pinKey(user)) !== null; }
+async function hashPin(pin) {
+  const data = new TextEncoder().encode('tt-pin::' + pin);
+  try {
+    if (window.crypto && crypto.subtle) {
+      const buf = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (e) { /* fall back below */ }
+  let h = 5381;
+  for (const b of data) h = ((h * 33) ^ b) >>> 0;
+  return 'x' + h.toString(16);
+}
+function askPin(msg, cb) { showPrompt(msg, '', cb, true); }
+
+// Gate every profile switch behind the PIN (or offer one-time setup)
+function requestLogin(user) {
+  if (loggedIn) return;
+  if (hasPin(user)) {
+    askPin('Enter PIN for ' + user + ':', async pin => {
+      if (!pin) return;
+      if (await hashPin(pin) === localStorage.getItem(pinKey(user))) {
+        login(user);
+      } else {
+        showError('Incorrect PIN. Access denied.');
+      }
+    });
+  } else {
+    // One-time setup offer for profiles that don't have a PIN yet
+    askPin('Set a PIN for ' + user + '? (one-time setup, stored only on this computer)\nLeave empty to continue without a PIN:', async pin => {
+      pin = (pin || '').trim();
+      if (!pin) return login(user);
+      askPin('Confirm PIN:', async pin2 => {
+        if (pin2 !== pin) return showError('PINs do not match. Try logging in again.');
+        localStorage.setItem(pinKey(user), await hashPin(pin));
+        showBalloon('\uD83D\uDD12 PIN set for ' + user + ' \u2014 it will be asked on every login.');
+        login(user);
+      });
+    });
+  }
+}
+
+// Shared "create a user" flow: name -> optional PIN -> confirm PIN
+function promptNewUser(onCreated) {
+  showPrompt('New user name:', '', name => {
+    name = name.trim();
+    if (!name) return;
+    if (users.includes(name)) return showError('That user already exists.');
+    askPin('Set a PIN for ' + name + ' (stored only on this computer).\nLeave empty for no PIN:', pin => {
+      pin = (pin || '').trim();
+      const finish = async () => {
+        if (pin) localStorage.setItem(pinKey(name), await hashPin(pin));
+        users.push(name);
+        localStorage.setItem('timetracker_users', JSON.stringify(users));
+        renderLogin();
+        onCreated(name);
+      };
+      if (!pin) return finish();
+      askPin('Confirm PIN:', pin2 => {
+        if (pin2 !== pin) return showError('PINs do not match. The user was not created.');
+        finish();
+      });
+    });
+  });
+}
+
 // --- Login screen (multi-profile, with dial-up handshake) ---
 let loggedIn = false;
 function renderLogin() {
@@ -2854,17 +2949,8 @@ function renderLogin() {
   '<div class="login-acct" id="loginAdd"><div class="avatar">+</div>' +
   '<div><div class="la-name">Add User</div><div class="la-sub">Create a new profile</div></div></div>';
   c.querySelectorAll('.login-acct[data-user]').forEach(el =>
-    el.addEventListener('click', () => login(el.dataset.user)));
-  $('loginAdd').addEventListener('click', () => {
-    showPrompt('New user name:', '', name => {
-      name = name.trim();
-      if (!name) return;
-      if (users.includes(name)) return showError('That user already exists.');
-      users.push(name);
-      localStorage.setItem('timetracker_users', JSON.stringify(users));
-      renderLogin();
-    });
-  });
+    el.addEventListener('click', () => requestLogin(el.dataset.user)));
+  $('loginAdd').addEventListener('click', () => promptNewUser(() => {}));
 }
 let dialIv = null, dialTo = null;
 function login(user) {
@@ -2949,6 +3035,12 @@ function renameUser(newName) {
         localStorage.removeItem(b + '::' + currentUser);
       }
     });
+  }
+  // Carry the PIN over to the new name
+  const pv = localStorage.getItem(pinKey(currentUser));
+  if (pv !== null) {
+    localStorage.setItem(pinKey(newName), pv);
+    localStorage.removeItem(pinKey(currentUser));
   }
   users[idx] = newName;
   localStorage.setItem('timetracker_users', JSON.stringify(users));
