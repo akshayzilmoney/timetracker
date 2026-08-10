@@ -71,14 +71,17 @@
 
   /* restored (small window) mode, toggled by the maximize button */
   .xp-window.windowed {
-    min-height: 0;
-    max-width: 540px;
+    min-height: 220px;
+    width: 540px;
+    max-width: 92vw;
+    min-width: 360px;
     margin: 24px auto;
     border: 1px solid #0831D9;
     border-radius: 8px 8px 0 0;
     box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+    resize: both;      /* native corner grip for adjusting the window */
+    overflow: auto;
   }
-  .xp-window.rolled { min-height: 0; }
   .title-bar {
     display: flex;
     align-items: center;
@@ -111,11 +114,6 @@
 
   .xp-window.windowed .title-bar,
   .msgbox .title-bar { border-radius: 7px 7px 0 0; }
-
-  /* rolled up (minimized) window state */
-  .xp-window.rolled .menu-bar,
-  .xp-window.rolled .xp-body,
-  .xp-window.rolled .status-strip { display: none; }
 
   .menu-bar {
     background: #ECE9D8;
@@ -485,7 +483,7 @@
   #msgText { white-space: pre-line; }
 
   /* --- dragging --- */
-  .xp-window.dragged { position: fixed; margin: 0; width: 540px; max-width: 92vw; z-index: 5; }
+  .xp-window.dragged { position: fixed; margin: 0; z-index: 5; }
   .title-bar { cursor: default; }
 
   /* --- start menu --- */
@@ -923,6 +921,29 @@
   .mine-diff button { min-width: 0; padding: 2px 8px; font-size: 10px; }
   .mine-diff button.active { background: #FFE7A2; }
 
+  /* --- desktop context menu + folders --- */
+  #ctxMenu {
+    display: none;
+    position: fixed;
+    z-index: 1700;
+    min-width: 178px;
+    background: #fff;
+    border: 1px solid #ACA899;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    padding: 2px;
+    user-select: none;
+  }
+  #ctxMenu .cm-item { padding: 4px 20px 4px 26px; cursor: default; }
+  #ctxMenu .cm-item:hover { background: #316AC5; color: #fff; }
+  #ctxMenu .cm-item.disabled { color: #999; }
+  #ctxMenu .cm-item.disabled:hover { background: none; color: #999; }
+  #ctxMenu .cm-sep { height: 1px; background: #D0D0BF; margin: 3px 2px; }
+  .folder-body { width: 380px; height: 210px; background: #fff; padding: 20px; color: #555; overflow: auto; }
+  .flicker { animation: deskFlick .15s; }
+  @keyframes deskFlick { 50% { opacity: 0.35; } }
+  .task-item.main-task { cursor: pointer; }
+  .task-item.main-task:hover { filter: brightness(1.12); }
+
   /* --- multi-user login --- */
   #loginAccts { display: flex; flex-direction: column; gap: 6px; max-height: 72vh; overflow: auto; }
 
@@ -1203,7 +1224,7 @@
   @media (max-width: 640px) {
     .desktop-icons { position: static; flex-direction: row; flex-wrap: wrap; gap: 8px; padding: 8px; }
     .dicon { width: 64px; }
-    .xp-window.windowed { max-width: none; margin: 8px; }
+    .xp-window.windowed { width: auto; max-width: none; min-width: 0; margin: 8px; resize: none; }
     .stats, .stats.two { grid-template-columns: 1fr 1fr; }
     #pet, #goose { display: none !important; }
     .login-left { border-right: none; padding-right: 0; font-size: 16px; }
@@ -1250,7 +1271,7 @@
     <span class="title-icon">&#128336;</span>
     <span class="title-text">Office Time Tracker</span>
     <span class="title-buttons">
-      <span class="tbtn" id="btnMin" title="Roll up">&#95;</span><span class="tbtn" id="btnMax" title="Maximize">&#9633;</span><span class="tbtn close" id="btnClose" title="Close">&#10005;</span>
+      <span class="tbtn" id="btnMin" title="Minimize">&#95;</span><span class="tbtn" id="btnMax" title="Maximize">&#9633;</span><span class="tbtn close" id="btnClose" title="Close">&#10005;</span>
     </span>
   </div>
   <div class="menu-bar"><span>File</span><span>View</span><span>Help</span></div>
@@ -1583,6 +1604,19 @@
         <button class="dash-btn" id="dmNoteSave">Save</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="ctxMenu"></div>
+
+<div id="folderWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text" id="folderTitle">Folder</span>
+    <span class="title-buttons"><span class="tbtn close" id="folderX">&#10005;</span></span>
+  </div>
+  <div class="folder-body">
+    <div>This folder is empty.</div>
+    <div class="muted" style="text-align:left; padding-top:10px">0 objects &#183; 0 bytes</div>
   </div>
 </div>
 
@@ -2015,9 +2049,18 @@ function errorBeep() {
 }
 
 // --- Title bar buttons ---
-$('btnMin').addEventListener('click', () => {
-  document.querySelector('.xp-window').classList.toggle('rolled');
-});
+// Minimize hides the window to its taskbar button, like a real OS
+let mainMin = false;
+const mainWinEl = document.querySelector('.xp-window');
+const mainTaskEl = document.querySelector('.task-item');
+mainTaskEl.classList.add('main-task');
+function toggleMainWin() {
+  mainMin = !mainMin;
+  mainWinEl.style.display = mainMin ? 'none' : '';
+  mainTaskEl.classList.toggle('min', mainMin);
+}
+$('btnMin').addEventListener('click', toggleMainWin);
+mainTaskEl.addEventListener('click', toggleMainWin);
 $('btnMax').addEventListener('click', () => {
   const win = document.querySelector('.xp-window');
   win.classList.toggle('windowed');
@@ -2378,6 +2421,125 @@ document.body.addEventListener('click', e => {
     document.querySelectorAll('.dicon').forEach(i => i.classList.remove('selected'));
   }
 });
+
+// --- Real desktop: user folders + right-click context menu + refresh ---
+const DESKTOP_KEY = 'timetracker_desktop';
+let deskFolders = [];
+try { deskFolders = JSON.parse(localStorage.getItem(DESKTOP_KEY)) || []; } catch (e) { deskFolders = []; }
+function saveDesk() { localStorage.setItem(DESKTOP_KEY, JSON.stringify(deskFolders)); }
+
+function renderDeskFolders() {
+  document.querySelectorAll('.dicon.userfolder').forEach(el => el.remove());
+  const cont = document.querySelector('.desktop-icons');
+  deskFolders.forEach((f, i) => {
+    const d = document.createElement('div');
+    d.className = 'dicon userfolder';
+    d.dataset.folder = i;
+    d.innerHTML = '<div class="di-img">\uD83D\uDCC1</div><div class="di-label">' + esc(f.name) + '</div>';
+    d.addEventListener('click', () => {
+      document.querySelectorAll('.dicon').forEach(x => x.classList.remove('selected'));
+      d.classList.add('selected');
+    });
+    d.addEventListener('dblclick', () => openFolder(i));
+    cont.appendChild(d);
+  });
+}
+function openFolder(i) {
+  if (!deskFolders[i]) return;
+  $('folderTitle').textContent = deskFolders[i].name;
+  $('folderWindow').style.display = 'block';
+}
+$('folderX').addEventListener('click', () => { $('folderWindow').style.display = 'none'; });
+
+function newFolder() {
+  let name = 'New Folder', k = 2;
+  while (deskFolders.some(f => f.name === name)) name = 'New Folder (' + k++ + ')';
+  deskFolders.push({ name: name });
+  saveDesk();
+  renderDeskFolders();
+  renameFolder(deskFolders.length - 1); // XP lets you name it right away
+}
+function renameFolder(i) {
+  if (!deskFolders[i]) return;
+  showPrompt('Folder name:', deskFolders[i].name, name => {
+    name = name.trim();
+    if (!name) return;
+    deskFolders[i].name = name;
+    saveDesk();
+    renderDeskFolders();
+  });
+}
+function deleteFolder(i) {
+  if (!deskFolders[i]) return;
+  showConfirm('Are you sure you want to send "' + deskFolders[i].name + '" to the Recycle Bin?', () => {
+    deskFolders.splice(i, 1);
+    saveDesk();
+    renderDeskFolders();
+  });
+}
+function deskRefresh() {
+  document.querySelectorAll('.dicon').forEach(i => i.classList.remove('selected'));
+  const d = document.querySelector('.desktop-icons');
+  d.classList.remove('flicker');
+  void d.offsetWidth;
+  d.classList.add('flicker');
+  renderDeskFolders();
+}
+
+// XP-style right-click menu
+function showCtx(items, x, y) {
+  const ctx = $('ctxMenu');
+  ctx.innerHTML = items.map((it, i) => it === '-'
+    ? '<div class="cm-sep"></div>'
+    : '<div class="cm-item' + (it.disabled ? ' disabled' : '') + '" data-i="' + i + '">' + it.label + '</div>'
+  ).join('');
+  ctx.querySelectorAll('.cm-item').forEach(el => el.addEventListener('click', () => {
+    const it = items[+el.dataset.i];
+    hideCtx();
+    if (!it.disabled && it.fn) it.fn();
+  }));
+  ctx.style.display = 'block';
+  ctx.style.left = Math.min(x, innerWidth - ctx.offsetWidth - 4) + 'px';
+  ctx.style.top = Math.min(y, innerHeight - ctx.offsetHeight - 4) + 'px';
+}
+function hideCtx() { $('ctxMenu').style.display = 'none'; }
+document.addEventListener('click', hideCtx);
+
+document.addEventListener('contextmenu', e => {
+  // Only take over the desktop; leave apps, inputs and games alone
+  if (e.target.closest('.xp-window, .mini-win, #mineWindow, .taskbar, #startMenu, #dashboard, #loginScreen, #setupWindow, .overlay, #lootWin, #bossScreen, #ctxMenu, input, textarea')) return;
+  e.preventDefault();
+  const icon = e.target.closest('.dicon');
+  if (icon && icon.dataset.folder !== undefined) {
+    const i = +icon.dataset.folder;
+    showCtx([
+      { label: '<b>Open</b>', fn: () => openFolder(i) },
+      '-',
+      { label: 'Rename', fn: () => renameFolder(i) },
+      { label: 'Delete', fn: () => deleteFolder(i) },
+      '-',
+      { label: 'Properties', fn: () => showInfo(deskFolders[i].name + ' Properties\n\nType: File Folder\nLocation: C:\\Documents and Settings\\Desktop\nSize: 0 bytes\nContains: 0 Files, 0 Folders') }
+    ], e.clientX, e.clientY);
+  } else if (icon) {
+    showCtx([
+      { label: '<b>Open</b>', fn: () => icon.dispatchEvent(new Event('dblclick')) },
+      '-',
+      { label: 'Properties', fn: () => showInfo('Type: System object\nLocation: C:\\Desktop\nAttributes: Read-only (of course)') }
+    ], e.clientX, e.clientY);
+  } else {
+    showCtx([
+      { label: 'Refresh', fn: deskRefresh },
+      '-',
+      { label: 'Paste', disabled: true },
+      { label: 'Paste Shortcut', disabled: true },
+      '-',
+      { label: 'New Folder', fn: newFolder },
+      '-',
+      { label: 'Properties', fn: () => showInfo('Display Properties\n\nTheme: Windows XP (Luna)\nWallpaper: Bliss\nScreen saver: Mystify Your Mind\nColor quality: Highest (32 bit)') }
+    ], e.clientX, e.clientY);
+  }
+});
+renderDeskFolders();
 
 // --- Recycle bin logic (restore-only: history can never be deleted) ---
 function restoreDay(k) {
@@ -3752,7 +3914,7 @@ function startPet() {
   }, 40);
   setInterval(() => { if (Math.random() < 0.5) petSay(randomFact()); }, 45000);
   setInterval(() => { // occasionally sit on the window title bar
-    if (petMode !== 'walk') return;
+    if (petMode !== 'walk' || mainMin) return; // no window to sit on when minimized
     petMode = 'sit';
     const w = document.querySelector('.xp-window').getBoundingClientRect();
     petX = w.left + w.width / 2;
