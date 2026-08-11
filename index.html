@@ -79,8 +79,7 @@
     border: 1px solid #0831D9;
     border-radius: 8px 8px 0 0;
     box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
-    resize: both;      /* native corner grip for adjusting the window */
-    overflow: auto;
+    overflow: auto;    /* JS edge handles make it resizable like real XP */
   }
   .title-bar {
     display: flex;
@@ -1367,7 +1366,7 @@
   @media (max-width: 640px) {
     .desktop-icons { position: static; flex-direction: row; flex-wrap: wrap; gap: 8px; padding: 8px; }
     .dicon { width: 64px; }
-    .xp-window.windowed { width: auto; max-width: none; min-width: 0; margin: 8px; resize: none; }
+    .xp-window.windowed { width: auto; max-width: none; min-width: 0; margin: 8px; }
     .stats, .stats.two { grid-template-columns: 1fr 1fr; }
     #pet, #goose { display: none !important; }
     .login-left { border-right: none; padding-right: 0; font-size: 16px; }
@@ -2338,7 +2337,7 @@ $('btnMax').addEventListener('click', () => {
   const win = document.querySelector('.xp-window');
   win.classList.toggle('windowed');
   win.classList.remove('dragged');
-  win.style.left = win.style.top = '';
+  win.style.left = win.style.top = win.style.width = win.style.height = win.style.cursor = '';
 });
 $('btnClose').addEventListener('click', shutdown);
 
@@ -3735,6 +3734,68 @@ function shutdownChime() {
     win.style.top = Math.max(0, e.clientY - offY) + 'px';
   });
   document.addEventListener('mouseup', () => { dragging = false; });
+})();
+
+// --- Resizable window (windowed mode only): drag any edge or corner ---
+(function () {
+  const win = document.querySelector('.xp-window');
+  const EDGE = 6;                 // grab zone in px
+  const MINW = 360, MINH = 220;   // matches the CSS minimums
+  let rz = null;                  // active resize: { d, x, y, r }
+
+  function edgesAt(e) {
+    const r = win.getBoundingClientRect();
+    return {
+      left:   e.clientX - r.left  < EDGE,
+      right:  r.right   - e.clientX < EDGE,
+      top:    e.clientY - r.top   < EDGE,
+      bottom: r.bottom  - e.clientY < EDGE,
+    };
+  }
+  function cursorFor(d) {
+    if ((d.top && d.left) || (d.bottom && d.right)) return 'nwse-resize';
+    if ((d.top && d.right) || (d.bottom && d.left)) return 'nesw-resize';
+    if (d.left || d.right) return 'ew-resize';
+    if (d.top || d.bottom) return 'ns-resize';
+    return '';
+  }
+
+  win.addEventListener('mousemove', e => {
+    if (rz || !win.classList.contains('windowed')) return;
+    win.style.cursor = cursorFor(edgesAt(e));
+  });
+  win.addEventListener('mouseleave', () => { if (!rz) win.style.cursor = ''; });
+
+  // capture phase so edge grabs win over the title-bar drag handler
+  win.addEventListener('mousedown', e => {
+    if (!win.classList.contains('windowed')) return;
+    const d = edgesAt(e);
+    if (!cursorFor(d)) return;
+    const r = win.getBoundingClientRect();
+    win.classList.add('dragged');          // switch to position: fixed
+    win.style.left = r.left + 'px';
+    win.style.top = r.top + 'px';
+    win.style.width = r.width + 'px';
+    win.style.height = r.height + 'px';
+    rz = { d, x: e.clientX, y: e.clientY, r };
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
+
+  document.addEventListener('mousemove', e => {
+    if (!rz) return;
+    const dx = e.clientX - rz.x, dy = e.clientY - rz.y;
+    let { left, top, width, height } = rz.r;
+    if (rz.d.right)  width  = Math.max(MINW, rz.r.width + dx);
+    if (rz.d.bottom) height = Math.max(MINH, rz.r.height + dy);
+    if (rz.d.left)   { width  = Math.max(MINW, rz.r.width - dx);  left = rz.r.right - width; }
+    if (rz.d.top)    { height = Math.max(MINH, rz.r.height - dy); top = rz.r.bottom - height; }
+    win.style.left = left + 'px';
+    win.style.top = Math.max(0, top) + 'px';
+    win.style.width = width + 'px';
+    win.style.height = height + 'px';
+  });
+  document.addEventListener('mouseup', () => { rz = null; });
 })();
 
 // --- Start menu ---
