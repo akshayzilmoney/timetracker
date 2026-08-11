@@ -1592,6 +1592,7 @@
     <div class="sm-item" id="smMine">&#128163; Minesweeper</div>
     <div class="sm-item" id="smSolitaire">&#127183; Solitaire</div>
     <div class="sm-item" id="smPinball">&#127921; Pinball</div>
+    <div class="sm-item" id="smRoadRash">&#127949;&#65039; Road Rash</div>
     <div class="sm-item" id="smWinamp">&#127925; Winamp</div>
     <div class="sm-item" id="smMsn">&#128172; MSN Messenger</div>
     <div class="sm-item" id="smDefrag">&#128451;&#65039; Disk Defragmenter</div>
@@ -1665,6 +1666,14 @@
     <span class="title-buttons"><span class="tbtn close" id="pinballX">&#10005;</span></span>
   </div>
   <canvas id="pinballCanvas" width="260" height="380"></canvas>
+</div>
+
+<div id="rrWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">Road Rash</span>
+    <span class="title-buttons"><span class="tbtn close" id="rrX">&#10005;</span></span>
+  </div>
+  <canvas id="rrCanvas" width="480" height="320"></canvas>
 </div>
 
 <div id="bossScreen">
@@ -2670,7 +2679,7 @@ $('openDash').addEventListener('click', openDashboard);
 document.addEventListener('keydown', e => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   if (e.target.matches('input, textarea')) return;
-  if ($('snakeWindow').style.display === 'block' || $('pinballWindow').style.display === 'block') return;
+  if ($('snakeWindow').style.display === 'block' || $('pinballWindow').style.display === 'block' || $('rrWindow').style.display === 'block') return;
   if ($('msgOverlay').style.display === 'flex') return;
   if ($('dashboard').style.display === 'block') return;
   viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + (e.key === 'ArrowRight' ? 1 : -1), 1);
@@ -3825,7 +3834,7 @@ $('smScores').addEventListener('click', () => {
   const names = Object.keys(scores);
   if (!names.length) return showInfo('No high scores yet. The games are on the Start menu \u2014 for "productivity research".');
   showInfo('Hall of Fame:\n\n' + names.map(n =>
-    '\uD83E\uDD47 ' + n + ': ' + scores[n] + (n.startsWith('Minesweeper') ? 's' : ' pts')).join('\n'));
+    '\uD83E\uDD47 ' + n + ': ' + scores[n] + (n.startsWith('Minesweeper') || n === 'Road Rash' ? 's' : ' pts')).join('\n'));
 });
 $('smWinamp').addEventListener('click', () => { closeStart(); openWinamp(); });
 $('smMsn').addEventListener('click', () => { closeStart(); openMsn(); });
@@ -5294,6 +5303,470 @@ document.addEventListener('keyup', e => {
   }
 });
 
+// --- Road Rash ---
+const RR_W = 480, RR_H = 320, RR_HOR = 128, RR_ROWS = RR_H - RR_HOR;
+const RR_K = 25;                  // camera depth: persp p = RR_K / (dz + RR_K)
+const RR_MAX = 240;               // top speed in units/s (display mph = *0.6)
+const RR_LOOP = 7200;             // track loop length in units
+const RR_RACE = RR_LOOP * 2.5;    // race distance
+const RR_DRAW = 420;              // sprite draw distance
+const RR_TRACK = [                // {curve, len} segments, lens sum to RR_LOOP
+  { c: 0, l: 600 }, { c: 2, l: 700 }, { c: 0, l: 400 }, { c: -2.5, l: 600 },
+  { c: 0, l: 500 }, { c: 1.5, l: 800 }, { c: -1.5, l: 500 }, { c: 0, l: 600 },
+  { c: 3, l: 500 }, { c: 0, l: 400 }, { c: -2, l: 900 }, { c: 0.5, l: 700 }
+];
+const RR_NAMES = [
+  ['Biff', '#D42A2A'], ['Natasha', '#9B30D9'], ['Slater', '#2A6BD4'],
+  ['Gnarly', '#0FA352'], ['Viper', '#E8871E']
+];
+const RR_CAR_COLS = ['#B03060', '#3060B0', '#C8A020', '#508050'];
+let rr = null, rrRAF = null, rrLast = 0;
+const rrKeys = { up: false, down: false, left: false, right: false };
+
+function rrCurveAt(z) {
+  let d = ((z % RR_LOOP) + RR_LOOP) % RR_LOOP;
+  for (let i = 0; i < RR_TRACK.length; i++) {
+    if (d < RR_TRACK[i].l) return RR_TRACK[i].c;
+    d -= RR_TRACK[i].l;
+  }
+  return 0;
+}
+function openRoadRash() {
+  const w = $('rrWindow');
+  w.dataset.min = '';
+  w.style.display = 'block';
+  if (!rr) rrReset();
+  cancelAnimationFrame(rrRAF);
+  rrLast = 0;
+  rrRAF = requestAnimationFrame(rrLoop);
+}
+function rrReset() {
+  const lanes = [-0.55, 0.55, -0.2, 0.2, 0];
+  rr = {
+    state: 'ready', time: 0, countT: 0, z: 0, dist: 0, x: 0, speed: 0,
+    crashT: 0, spin: 0, punchT: 0, punchDir: 0, punchCd: 0, hitFlash: 0,
+    rank: 6, finPlace: 0, finTime: 0, nextCar: 250, cars: [],
+    rowC: new Float32Array(RR_H), rowW: new Float32Array(RR_H),
+    rivals: RR_NAMES.map((r, i) => ({
+      name: r[0], col: r[1], dist: 22 + i * 13, x: lanes[i], lane: lanes[i],
+      speed: 0, cruise: (0.86 + i * 0.024) * RR_MAX,
+      state: 'ride', t: 0, adjT: 0, phase: Math.random() * 6.28
+    }))
+  };
+}
+function rrStart() {
+  rr.state = 'count';
+  rr.countT = 3;
+  playTones([[440, 0, 0.15]], 0.08, 'square');
+}
+function rrCrash() {
+  rr.crashT = 1.8;
+  rr.spin = 0;
+  rr.punchT = 0;
+  playTones([[130, 0, 0.25], [90, 0.12, 0.35]], 0.14, 'sawtooth');
+}
+function rrPunch(dir) {
+  if (!rr || rr.state !== 'racing' || rr.crashT > 0 || rr.punchCd > 0) return;
+  rr.punchCd = 0.45;
+  rr.punchT = 0.22;
+  rr.punchDir = dir;
+  let hit = false;
+  rr.rivals.forEach(v => {
+    if (v.state === 'down') return;
+    const rel = v.dist - rr.dist;
+    const dx = v.x - rr.x;
+    if (Math.abs(rel) < 14 && dx * dir > 0.05 && Math.abs(dx) < 0.5) {
+      hit = true;
+      if (Math.random() < 0.3) { v.state = 'down'; v.t = 2.6; }
+      else { v.state = 'wobble'; v.t = 1.1; v.speed *= 0.7; v.x += dir * 0.25; }
+    }
+  });
+  playTones(hit ? [[220, 0, 0.06], [150, 0.05, 0.12]] : [[420, 0, 0.05]], hit ? 0.12 : 0.05, 'square');
+}
+function rrLoop(ts) {
+  if (!rrLast) rrLast = ts;
+  const dt = Math.min(0.05, (ts - rrLast) / 1000);
+  rrLast = ts;
+  rrUpdate(dt);
+  rrDrawAll();
+  if ($('rrWindow').style.display === 'block') rrRAF = requestAnimationFrame(rrLoop);
+  else rrRAF = null;
+}
+function rrUpdate(dt) {
+  if (rr.state === 'count') {
+    const before = Math.ceil(rr.countT);
+    rr.countT -= dt;
+    const after = Math.ceil(rr.countT);
+    if (after < before && after > 0) playTones([[440, 0, 0.15]], 0.08, 'square');
+    if (rr.countT <= 0) {
+      rr.state = 'racing';
+      playTones([[880, 0, 0.35]], 0.1, 'square');
+    }
+    return;
+  }
+  if (rr.state !== 'racing') return;
+  rr.time += dt;
+  rr.punchCd -= dt;
+  rr.punchT -= dt;
+  rr.hitFlash -= dt;
+
+  // --- player physics ---
+  if (rr.crashT > 0) {
+    rr.crashT -= dt;
+    rr.spin += dt * 9;
+    rr.speed = Math.max(0, rr.speed - RR_MAX * 1.4 * dt);
+    if (rr.crashT <= 0) {
+      rr.speed = RR_MAX * 0.25;
+      rr.x = Math.max(-0.8, Math.min(0.8, rr.x));
+      rr.spin = 0;
+    }
+  } else {
+    if (rrKeys.up) rr.speed += 85 * dt;
+    else rr.speed -= 30 * dt;
+    if (rrKeys.down) rr.speed -= 160 * dt;
+    rr.speed -= rr.speed * 0.12 * dt;
+    rr.speed = Math.max(0, Math.min(RR_MAX, rr.speed));
+    const sf = rr.speed / RR_MAX;
+    const steer = (0.5 + 1.8 * sf) * dt;
+    if (rrKeys.left) rr.x -= steer;
+    if (rrKeys.right) rr.x += steer;
+    rr.x -= rrCurveAt(rr.z) * sf * sf * 0.45 * dt;  // centrifugal drift
+    if (Math.abs(rr.x) > 1.05 && rr.speed > 60) rr.speed -= (rr.speed - 60) * 2.5 * dt;
+    rr.x = Math.max(-2.2, Math.min(2.2, rr.x));
+  }
+  rr.z = (rr.z + rr.speed * dt) % RR_LOOP;
+  rr.dist += rr.speed * dt;
+
+  // --- rivals ---
+  rr.rivals.forEach(v => {
+    if (v.state === 'down') {
+      v.t -= dt;
+      v.speed = Math.max(0, v.speed - 300 * dt);
+      if (v.t <= 0) v.state = 'ride';
+    } else {
+      const gap = rr.dist - v.dist;  // + = rival behind player
+      let target = v.cruise * (1 + Math.max(-1, Math.min(1, gap / 700)) * 0.08);
+      if (v.state === 'wobble') {
+        v.t -= dt;
+        target *= 0.6;
+        if (v.t <= 0) v.state = 'ride';
+      }
+      v.speed += Math.max(-120 * dt, Math.min(70 * dt, target - v.speed));
+      const wx = v.lane + Math.sin(rr.time * 0.7 + v.phase) * 0.1;
+      v.x += Math.max(-0.8 * dt, Math.min(0.8 * dt, wx - v.x));
+      const vz = v.dist % RR_LOOP;
+      rr.cars.forEach(cr => {
+        const dz = (((cr.z - vz) % RR_LOOP) + RR_LOOP) % RR_LOOP;
+        if (dz < 45 && Math.abs(cr.x - v.x) < 0.35) v.x += (v.x > cr.x ? 0.9 : -0.9) * dt;
+        if (dz < 8 && Math.abs(cr.x - v.x) < 0.28 && v.speed > cr.speed + 5 && v.state === 'ride') {
+          v.state = 'wobble';
+          v.t = 1;
+          v.speed = 45;
+        }
+      });
+    }
+    v.dist += v.speed * dt;
+
+    // player interaction: rub shoulders + shoves
+    const rel = v.dist - rr.dist;
+    if (Math.abs(rel) < 12 && rr.crashT <= 0 && v.state !== 'down') {
+      const dx = v.x - rr.x;
+      if (Math.abs(dx) < 0.18) {  // body contact, nudge apart
+        const push = 0.6 * dt * (dx >= 0 ? 1 : -1);
+        v.x += push;
+        rr.x -= push;
+      } else if (Math.abs(dx) < 0.42) {
+        v.adjT += dt;
+        if (v.adjT > 1 && Math.random() < 2.5 * dt) {  // rival throws a punch
+          rr.x += dx > 0 ? -0.3 : 0.3;
+          rr.speed *= 0.85;
+          rr.hitFlash = 0.25;
+          v.adjT = 0;
+          playTones([[160, 0, 0.12]], 0.1, 'square');
+        }
+      }
+    } else {
+      v.adjT = 0;
+    }
+  });
+
+  // --- traffic ---
+  if (rr.dist > rr.nextCar && rr.cars.length < 10 && rr.dist < RR_RACE - RR_DRAW) {
+    rr.cars.push({
+      z: (rr.z + RR_DRAW) % RR_LOOP,
+      x: [-0.6, -0.2, 0.2, 0.6][Math.floor(Math.random() * 4)],
+      speed: 55,
+      col: RR_CAR_COLS[Math.floor(Math.random() * RR_CAR_COLS.length)]
+    });
+    rr.nextCar = rr.dist + 150 + Math.random() * 250;
+  }
+  rr.cars = rr.cars.filter(cr => {
+    cr.z = (cr.z + cr.speed * dt) % RR_LOOP;
+    const rel = (((cr.z - rr.z) % RR_LOOP) + RR_LOOP) % RR_LOOP;
+    const behind = RR_LOOP - rel;
+    if ((rel < 9 || behind < 3) && Math.abs(cr.x - rr.x) < 0.3 && rr.crashT <= 0 && rr.speed > cr.speed) {
+      if (rr.speed > 110) rrCrash();
+      else rr.speed = 45;  // low-speed bump
+    }
+    return !(behind > 60 && behind < RR_LOOP / 2);
+  });
+
+  rr.rank = 1 + rr.rivals.filter(v => v.dist > rr.dist).length;
+
+  // --- finish line ---
+  if (rr.dist >= RR_RACE) {
+    rr.state = 'finished';
+    rr.finTime = Math.round(rr.time * 10) / 10;
+    rr.finPlace = rr.rank;
+    playTones([[523, 0, 0.2], [659, 0.15, 0.2], [784, 0.3, 0.2], [1047, 0.45, 0.5]], 0.1);
+    updateScore('Road Rash', rr.finTime, true);
+  }
+}
+function rrDrawAll() {
+  const c = $('rrCanvas').getContext('2d');
+  // sky + hills
+  const g = c.createLinearGradient(0, 0, 0, RR_HOR);
+  g.addColorStop(0, '#4A90D9');
+  g.addColorStop(1, '#B8D8F0');
+  c.fillStyle = g;
+  c.fillRect(0, 0, RR_W, RR_HOR);
+  c.fillStyle = '#6FA84F';
+  c.beginPath();
+  c.ellipse(90, RR_HOR, 160, 34, 0, Math.PI, Math.PI * 2);
+  c.fill();
+  c.beginPath();
+  c.ellipse(370, RR_HOR, 200, 24, 0, Math.PI, Math.PI * 2);
+  c.fill();
+  // scanline road with curve accumulator; cache per-row center/half-width
+  let xOff = 0, ddx = 0;
+  for (let i = 0; i < RR_ROWS; i++) {
+    const y = RR_H - 1 - i;
+    const p = Math.max(0.004, (y - RR_HOR) / RR_ROWS);
+    const dz = RR_K * (1 / p - 1);
+    const wz = rr.z + dz;
+    ddx += rrCurveAt(wz) * 0.0026;
+    xOff += ddx;
+    const half = 260 * p + 1;
+    const cx = RR_W / 2 + xOff - rr.x * half;
+    rr.rowC[y] = cx;
+    rr.rowW[y] = half;
+    const band = Math.floor(wz / 80) % 2;
+    c.fillStyle = band ? '#3F9E3F' : '#379137';
+    c.fillRect(0, y, RR_W, 1);
+    c.fillStyle = band ? '#E8E8E8' : '#CC3333';
+    c.fillRect(cx - half * 1.14, y, half * 2.28, 1);
+    c.fillStyle = band ? '#6A6A6A' : '#636363';
+    c.fillRect(cx - half, y, half * 2, 1);
+    if (Math.floor(wz / 40) % 2 === 0) {
+      c.fillStyle = '#DDD';
+      c.fillRect(cx - Math.max(1, half * 0.016), y, Math.max(1, half * 0.032), 1);
+    }
+  }
+  // sprites, far to near (painter's algorithm)
+  const spr = [];
+  rr.cars.forEach(cr => {
+    const rel = (((cr.z - rr.z) % RR_LOOP) + RR_LOOP) % RR_LOOP;
+    if (rel < RR_DRAW) spr.push({ t: 'car', dz: rel, x: cr.x, o: cr });
+  });
+  rr.rivals.forEach(v => {
+    const rel = v.dist - rr.dist;
+    if (rel > -6 && rel < RR_DRAW) spr.push({ t: 'riv', dz: Math.max(0.5, rel), x: v.x, o: v });
+  });
+  const finRel = RR_RACE - rr.dist;
+  if (finRel >= 0 && finRel < RR_DRAW) spr.push({ t: 'fin', dz: finRel, x: 0 });
+  spr.sort((a, b) => b.dz - a.dz);
+  spr.forEach(s => {
+    const p = RR_K / (s.dz + RR_K);
+    const y = RR_HOR + p * RR_ROWS;
+    if (y <= RR_HOR + 2) return;
+    const row = Math.min(RR_H - 1, Math.round(y));
+    const sx = rr.rowC[row] + s.x * rr.rowW[row];
+    if (s.t === 'car') rrDrawCar(c, sx, y, p, s.o);
+    else if (s.t === 'riv') rrDrawRival(c, sx, y, p, s.o);
+    else rrDrawFinish(c, row, y, p);
+  });
+  rrDrawPlayer(c);
+  rrDrawHud(c);
+  rrDrawOverlay(c);
+}
+function rrDrawCar(c, x, y, p, cr) {
+  const w = 95 * p, h = 58 * p;
+  c.fillStyle = '#222';
+  c.fillRect(x - w * 0.44, y - h * 0.22, w * 0.22, h * 0.22);
+  c.fillRect(x + w * 0.22, y - h * 0.22, w * 0.22, h * 0.22);
+  c.fillStyle = cr.col;
+  c.fillRect(x - w / 2, y - h * 0.75, w, h * 0.6);
+  c.fillStyle = '#9FBFDF';
+  c.fillRect(x - w * 0.32, y - h, w * 0.64, h * 0.35);
+  c.fillStyle = '#F44';
+  c.fillRect(x - w * 0.46, y - h * 0.6, w * 0.1, h * 0.14);
+  c.fillRect(x + w * 0.36, y - h * 0.6, w * 0.1, h * 0.14);
+}
+function rrDrawRival(c, x, y, p, v) {
+  const s = p;
+  if (v.state === 'down') {
+    c.fillStyle = '#333';
+    c.fillRect(x - 30 * s, y - 8 * s, 60 * s, 6 * s);
+    c.fillStyle = v.col;
+    c.fillRect(x - 12 * s, y - 14 * s, 24 * s, 6 * s);
+    return;
+  }
+  const wob = v.state === 'wobble' ? Math.sin(rr.time * 30) * 6 * s : 0;
+  c.fillStyle = '#111';
+  c.fillRect(x - 7 * s + wob * 0.3, y - 16 * s, 14 * s, 16 * s);
+  c.fillStyle = '#888';
+  c.fillRect(x - 13 * s + wob * 0.5, y - 26 * s, 26 * s, 12 * s);
+  c.fillStyle = v.col;
+  c.fillRect(x - 10 * s + wob, y - 46 * s, 20 * s, 24 * s);
+  c.fillStyle = '#EEE';
+  c.fillRect(x - 6 * s + wob, y - 56 * s, 12 * s, 11 * s);
+  if (p > 0.45) {
+    c.fillStyle = '#FFF';
+    c.font = '9px Tahoma';
+    c.textAlign = 'center';
+    c.fillText(v.name, x, y - 60 * s);
+    c.textAlign = 'left';
+  }
+}
+function rrDrawFinish(c, row, y, p) {
+  const cx = rr.rowC[row], half = rr.rowW[row];
+  c.fillStyle = '#DDD';
+  c.fillRect(cx - half * 1.1, y - 90 * p, Math.max(2, 5 * p), 90 * p);
+  c.fillRect(cx + half * 1.1 - Math.max(2, 5 * p), y - 90 * p, Math.max(2, 5 * p), 90 * p);
+  const bw = half * 2.2, bh = Math.max(6, 22 * p), bx = cx - half * 1.1, by = y - 90 * p;
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 2; j++) {
+      c.fillStyle = (i + j) % 2 ? '#111' : '#FFF';
+      c.fillRect(bx + bw / 16 * i, by + bh / 2 * j, bw / 16 + 0.5, bh / 2);
+    }
+  }
+}
+function rrDrawPlayer(c) {
+  const lean = (rrKeys.left ? -1 : 0) + (rrKeys.right ? 1 : 0);
+  c.save();
+  c.translate(RR_W / 2, 312);
+  c.rotate(rr.crashT > 0 ? Math.sin(rr.spin) * 0.9 : lean * 0.08);
+  c.fillStyle = '#111';
+  c.fillRect(-11, -18, 22, 18);
+  c.fillStyle = '#C22';
+  c.fillRect(-17, -34, 34, 17);
+  c.fillStyle = '#222';
+  c.fillRect(-13, -62, 26, 30);
+  if (rr.punchT > 0) {
+    c.fillRect(rr.punchDir > 0 ? 10 : -34, -58, 24, 8);
+    c.fillStyle = '#F2C99A';
+    c.fillRect(rr.punchDir > 0 ? 32 : -40, -59, 8, 9);
+  } else {
+    c.fillRect(-19, -56, 7, 22);
+    c.fillRect(12, -56, 7, 22);
+  }
+  c.fillStyle = '#E8E8E8';
+  c.fillRect(-8, -76, 16, 15);
+  c.fillStyle = '#59C';
+  c.fillRect(-6, -72, 12, 5);
+  c.restore();
+  if (rr.hitFlash > 0) {
+    c.fillStyle = 'rgba(255,0,0,' + rr.hitFlash.toFixed(2) + ')';
+    c.fillRect(0, 0, RR_W, RR_H);
+  }
+}
+function rrFmt(t) {
+  const m = Math.floor(t / 60), s = t - m * 60;
+  return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1);
+}
+function rrDrawHud(c) {
+  c.fillStyle = 'rgba(0,0,0,0.45)';
+  c.fillRect(0, 0, RR_W, 22);
+  c.fillStyle = '#FFF';
+  c.font = 'bold 12px Tahoma';
+  c.fillText(Math.round(rr.speed * 0.6) + ' mph', 8, 15);
+  c.fillText(rrFmt(rr.state === 'finished' ? rr.finTime : rr.time), 214, 15);
+  const place = rr.state === 'finished' ? rr.finPlace : rr.rank;
+  c.fillText(['1st', '2nd', '3rd', '4th', '5th', '6th'][place - 1] + ' / 6', 424, 15);
+  c.fillStyle = 'rgba(255,255,255,0.35)';
+  c.fillRect(90, 8, 100, 6);
+  rr.rivals.forEach(v => {
+    c.fillStyle = v.col;
+    c.fillRect(90 + Math.min(100, v.dist / RR_RACE * 100), 7, 2, 8);
+  });
+  c.fillStyle = '#FD0';
+  c.fillRect(90 + Math.min(100, rr.dist / RR_RACE * 100) - 1, 6, 3, 10);
+}
+function rrDrawOverlay(c) {
+  c.textAlign = 'center';
+  if (rr.state === 'ready') {
+    c.fillStyle = 'rgba(0,0,0,0.55)';
+    c.fillRect(0, 0, RR_W, RR_H);
+    c.fillStyle = '#FD0';
+    c.font = 'bold 30px Tahoma';
+    c.fillText('ROAD RASH', RR_W / 2, 108);
+    c.fillStyle = '#FFF';
+    c.font = '12px Tahoma';
+    c.fillText('\u2191 accelerate \u00b7 \u2193 brake \u00b7 \u2190 \u2192 steer', RR_W / 2, 148);
+    c.fillText('Z / A punch left \u00b7 X / S punch right', RR_W / 2, 168);
+    c.fillText('Race 5 rivals to the finish \u2014 watch the traffic!', RR_W / 2, 188);
+    c.font = 'bold 14px Tahoma';
+    c.fillText('Press Enter to race', RR_W / 2, 228);
+  } else if (rr.state === 'count') {
+    c.fillStyle = '#FD0';
+    c.font = 'bold 64px Tahoma';
+    c.fillText('' + Math.max(1, Math.ceil(rr.countT)), RR_W / 2, 170);
+  } else if (rr.state === 'racing' && rr.time < 0.8) {
+    c.fillStyle = '#3F3';
+    c.font = 'bold 64px Tahoma';
+    c.fillText('GO!', RR_W / 2, 170);
+  } else if (rr.state === 'finished') {
+    c.fillStyle = 'rgba(0,0,0,0.55)';
+    c.fillRect(0, 0, RR_W, RR_H);
+    c.fillStyle = '#FD0';
+    c.font = 'bold 26px Tahoma';
+    c.fillText('FINISHED \u2014 ' + ['1st', '2nd', '3rd', '4th', '5th', '6th'][rr.finPlace - 1] + ' place!', RR_W / 2, 120);
+    c.fillStyle = '#FFF';
+    c.font = 'bold 16px Tahoma';
+    c.fillText('Time: ' + rrFmt(rr.finTime), RR_W / 2, 156);
+    if (scores['Road Rash'] !== undefined) {
+      c.font = '12px Tahoma';
+      c.fillText('Best: ' + scores['Road Rash'] + 's', RR_W / 2, 178);
+    }
+    c.font = 'bold 14px Tahoma';
+    c.fillText('Press Enter to race again', RR_W / 2, 216);
+  }
+  c.textAlign = 'left';
+}
+document.addEventListener('keydown', e => {
+  if ($('rrWindow').style.display !== 'block' || !rr) return;
+  if (e.target.matches('input, textarea')) return;
+  if ($('msgOverlay').style.display === 'flex') return;
+  const k = e.key;
+  if (k === 'ArrowUp') { rrKeys.up = true; e.preventDefault(); }
+  else if (k === 'ArrowDown') { rrKeys.down = true; e.preventDefault(); }
+  else if (k === 'ArrowLeft') { rrKeys.left = true; e.preventDefault(); }
+  else if (k === 'ArrowRight') { rrKeys.right = true; e.preventDefault(); }
+  else if (k === 'z' || k === 'Z' || k === 'a' || k === 'A') rrPunch(-1);
+  else if (k === 'x' || k === 'X' || k === 's' || k === 'S') rrPunch(1);
+  else if (k === 'Enter') {
+    if (rr.state === 'ready') rrStart();
+    else if (rr.state === 'finished') { rrReset(); rrStart(); }
+    e.preventDefault();
+  }
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowUp') rrKeys.up = false;
+  else if (e.key === 'ArrowDown') rrKeys.down = false;
+  else if (e.key === 'ArrowLeft') rrKeys.left = false;
+  else if (e.key === 'ArrowRight') rrKeys.right = false;
+});
+$('rrX').addEventListener('click', () => {
+  $('rrWindow').style.display = 'none';
+  cancelAnimationFrame(rrRAF);
+  rrRAF = null;
+});
+$('rrCanvas').addEventListener('click', () => {
+  if (!rr) return;
+  if (rr.state === 'ready') rrStart();
+  else if (rr.state === 'finished') { rrReset(); rrStart(); }
+});
+
 // --- Touch controls: swipe to steer Snake, tap half-screen for Pinball flippers ---
 let snTouch = null;
 $('snakeCanvas').addEventListener('touchstart', e => {
@@ -5437,6 +5910,7 @@ $('smCds').addEventListener('click', () => {
   }).join('\n'));
 });
 $('smPinball').addEventListener('click', () => { closeStart(); openPinball(); });
+$('smRoadRash').addEventListener('click', () => { closeStart(); openRoadRash(); });
 
 // --- Overtime punishment state ---
 const GO_HOME_LINES = [
@@ -5991,7 +6465,8 @@ const WIN_REGISTRY = [
   ['taskmgrWindow', '\uD83D\uDCCB Task Manager'],
   ['dispWindow', '\uD83D\uDDA5\uFE0F Display'],
   ['ieWindow', '\uD83C\uDF10 Internet Explorer'],
-  ['solWindow', '\uD83C\uDCCF Solitaire']
+  ['solWindow', '\uD83C\uDCCF Solitaire'],
+  ['rrWindow', '\uD83C\uDFCD\uFE0F Road Rash']
 ];
 let zTop = 90, lastFocused = null;
 function focusWin(win) {
@@ -6063,6 +6538,7 @@ function toggleWin(id) {
     w.dataset.min = '1';
     w.style.display = 'none';
     if (id === 'snakeWindow') clearInterval(snIv);
+    if (id === 'rrWindow') { cancelAnimationFrame(rrRAF); rrRAF = null; }
   } else {
     // restore
     w.dataset.min = '';
@@ -6074,6 +6550,11 @@ function toggleWin(id) {
     if (id === 'pinballWindow' && pb) {
       cancelAnimationFrame(pbRAF);
       pbLoop();
+    }
+    if (id === 'rrWindow' && rr) {
+      cancelAnimationFrame(rrRAF);
+      rrLast = 0;
+      rrRAF = requestAnimationFrame(rrLoop);
     }
     focusWin(w);
   }
