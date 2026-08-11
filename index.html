@@ -1406,6 +1406,10 @@
     <div class="di-img">&#128190;</div>
     <div class="di-label">FREE_SCREENSAVERS.exe</div>
   </div>
+  <div class="dicon" data-action="roadrash">
+    <div class="di-img">&#127949;&#65039;</div>
+    <div class="di-label">Road Rash</div>
+  </div>
 </div>
 
 <div class="xp-window windowed">
@@ -2706,6 +2710,8 @@ document.querySelectorAll('.dicon').forEach(icon => {
       openIE();
     } else if (action === 'virus') {
       virusStart();
+    } else if (action === 'roadrash') {
+      openRoadRash();
     } else {
       showError(icon.dataset.msg);
     }
