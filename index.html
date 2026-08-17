@@ -2892,15 +2892,6 @@ function render() {
 
   $('sessionsBody').innerHTML = rows.join('');
 
-  // Tab title countdown
-  if (isPastDay) {
-    document.title = 'Office Time Tracker';
-  } else if (remainingMs > 0) {
-    document.title = fmtDurShort(remainingMs) + ' left \u2014 Office Time Tracker';
-  } else {
-    document.title = '\u2714 You can leave now \u2014 Office Time Tracker';
-  }
-
   // Record this day in monthly history (keyed by the day of the first punch-in).
   // Only persist + refresh the week strip/XP when a displayed value actually
   // changes (once a minute), so the live 1s tick doesn't thrash the DOM.
