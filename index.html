@@ -368,6 +368,14 @@
   /* Numeric Duration column reads right-aligned in today's sessions table */
   #result table th:last-child, #result table td:last-child { text-align: right; }
   .ongoing { color: #008000; font-weight: bold; }
+
+  /* first-sync placeholder */
+  .skel {
+    text-align: center; color: #777; font-style: italic;
+    padding: 28px 0;
+    animation: skelPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes skelPulse { 50% { opacity: 0.45; } }
   .pos { color: #008000; }
   .neg { color: #C00000; }
   .muted { color: #555; text-align: center; padding: 10px 0; }
@@ -451,6 +459,23 @@
   #traySync { cursor: pointer; font-size: 12px; line-height: 1; }
   #traySync.spin { animation: traySpin 1s linear infinite; }
   @keyframes traySpin { 50% { opacity: 0.35; } }
+  /* tray right-click menu */
+  #trayMenu {
+    display: none;
+    position: fixed; right: 6px; bottom: 34px;
+    z-index: 1200;
+    min-width: 170px;
+    background: #fff;
+    border: 1px solid #ACA899;
+    box-shadow: 2px 2px 6px rgba(0,0,0,0.35);
+    padding: 2px;
+    font-size: 11px;
+    color: #000;
+  }
+  .trm-item { padding: 6px 12px; cursor: pointer; }
+  .trm-item:hover { background: #316AC5; color: #fff; }
+  #trayMenu .sm-sep { margin: 2px 4px; }
+
   #trayChip {
     font-size: 11px; white-space: nowrap; cursor: default;
     font-variant-numeric: tabular-nums;
@@ -1312,8 +1337,8 @@
     overflow: hidden;
   }
   .cal-cell.empty { background: transparent; border-color: transparent; }
-  .cal-cell.has { cursor: pointer; }
-  .cal-cell.has:hover { border-color: #38bdf8; }
+  .cal-cell:not(.empty) { cursor: pointer; }
+  .cal-cell:not(.empty):hover { border-color: #38bdf8; }
   .cal-cell.ok { background: rgba(34,197,94,0.08); border-color: #1d4a2c; }
   .cal-cell.short { background: rgba(248,113,113,0.07); border-color: #5b2320; }
   .cal-cell.today { outline: 2px solid #38bdf8; outline-offset: -1px; }
@@ -1506,6 +1531,13 @@
     </div>
   </fieldset>
 
+  <div id="todaySkel" style="display:none">
+    <fieldset>
+      <legend>Today</legend>
+      <div class="skel">&#8987; Connecting to ATS&hellip;</div>
+    </fieldset>
+  </div>
+
   <div id="result">
     <fieldset>
     <legend>Today</legend>
@@ -1607,6 +1639,14 @@
   <div class="task-item">&#128336; o5s</div>
   <div class="task-open" id="taskOpen"></div>
   <div class="tray"><span id="traySync" class="off" title="ATS Sync">&#128274;</span><span id="trayChip" style="display:none">--</span><span id="trayClock">--:--</span></div>
+</div>
+
+<div id="trayMenu">
+  <div class="trm-item" id="trmSync">&#128257; Sync Now</div>
+  <div class="trm-item" id="trmDash">&#128202; Dashboard</div>
+  <div class="trm-item" id="trmSettings">&#9881;&#65039; Control Panel</div>
+  <div class="sm-sep"></div>
+  <div class="trm-item" id="trmMute">&#128263; Mute Sounds</div>
 </div>
 
 <div id="startMenu">
@@ -2236,6 +2276,7 @@ function loadJson(text, focus) {
   // Hide the manual input again after a successful load
   $('jsonInput').value = '';
   $('inputArea').style.display = 'none';
+  skelHide();
   $('result').style.display = 'block';
   render();
   clearInterval(timer);
@@ -2282,10 +2323,30 @@ function atsStatus(msg, color) {
 function traySyncIcon(state, tip) {
   const el = $('traySync');
   el.className = state;
-  el.textContent = state === 'err' ? '\u26A0\uFE0F' : state === 'off' ? '\u{1F512}' : '\u{1F501}';
+  el.textContent = state === 'err' ? '\u26A0\uFE0F'
+    : state === 'offline' ? '\u{1F4F4}'
+    : state === 'off' ? '\u{1F512}' : '\u{1F501}';
   el.title = 'ATS Sync' + (tip ? ' \u2014 ' + tip : '') + (state === 'off' ? '' : '. Click to sync now.');
 }
 $('traySync').addEventListener('click', () => $('atsSyncNowBtn').click());
+
+// First-sync placeholder for the Today panel
+function skelShow() { if (!data) $('todaySkel').style.display = 'block'; }
+function skelHide() { $('todaySkel').style.display = 'none'; }
+
+// Offline awareness: don't attempt syncs, say so quietly, resync on return
+function atsOfflineUi() {
+  atsStatus('\u{1F4F4} Offline \u2014 showing cached data.', '#a00');
+  traySyncIcon('offline', 'offline, showing cached data');
+  skelHide();
+}
+window.addEventListener('offline', atsOfflineUi);
+window.addEventListener('online', () => {
+  if (!loggedIn || !ats || !ats.email || !ats.password) return;
+  atsStatus('\u{1F501} Back online \u2014 syncing\u2026');
+  traySyncIcon('spin', 'syncing\u2026');
+  atsFetchToday(false);
+});
 
 // Reset the "Today" view (used when yesterday's data is stale or no punch yet)
 function clearTodayView() {
@@ -2293,12 +2354,14 @@ function clearTodayView() {
   data = null;
   lsRemove('timetracker_json');
   $('result').style.display = 'none';
+  skelHide();
   ambientIdle();
 }
 
 function atsProxyWarn() {
   atsStatus('\u26A0\uFE0F Sync server unreachable \u2014 will retry on next open.', '#a00');
   traySyncIcon('err', 'sync server unreachable');
+  skelHide();
   if (atsWarned) return;
   atsWarned = true;
   showBalloon('\u26A0\uFE0F ATS Sync: could not reach the sync server. Click the tray icon to retry.');
@@ -2308,6 +2371,7 @@ $('atsSyncNowBtn').addEventListener('click', () => {
   if (!ats || !ats.email || !ats.password) return atsSetup();
   atsStatus('\u{1F501} Syncing with ATS\u2026');
   traySyncIcon('spin', 'syncing\u2026');
+  skelShow();
   atsFetchToday(true);
 });
 $('atsLoginBtn').addEventListener('click', () => atsSetup());
@@ -2350,6 +2414,7 @@ async function atsLogin(cb) {
       atsSave();
       atsStatus('\u2716 ATS login failed \u2014 click Login\u2026 to re-enter.', '#a00');
       traySyncIcon('err', 'login failed');
+      skelHide();
       showError('ATS login failed: ' + (j.error || 'wrong email or password') + '\nClick Login\u2026 in the ATS Sync panel to re-enter your details.');
       if (cb) cb(false);
     } else {
@@ -2364,6 +2429,7 @@ async function atsLogin(cb) {
 
 async function atsFetchToday(manual) {
   if (!ats || !ats.email || !ats.password) return;
+  if (!navigator.onLine) return atsOfflineUi();
   atsLastFetchAt = Date.now();
   if (!ats.token || Date.now() > ats.exp) {
     return atsLogin(ok => { if (ok) atsFetchToday(manual); });
@@ -2585,6 +2651,7 @@ function startAtsSync() {
   } else {
     atsStatus('\u{1F501} Syncing with ATS\u2026');
     traySyncIcon('spin', 'syncing\u2026');
+    skelShow();
     atsFetchToday(false);
   }
   scheduleNightSync();
@@ -3975,6 +4042,25 @@ $('binRestoreAll').addEventListener('click', () => {
   keys.forEach(restoreDay);
   showBalloon(keys.length + ' day' + (keys.length === 1 ? '' : 's') + ' restored.');
 });
+// --- Tray right-click menu ---
+document.querySelector('.tray').addEventListener('contextmenu', e => {
+  e.preventDefault();
+  $('trmMute').innerHTML = settings.sound ? '&#128263; Mute Sounds' : '&#128266; Unmute Sounds';
+  $('trayMenu').style.display = 'block';
+});
+document.addEventListener('click', e => {
+  if (!$('trayMenu').contains(e.target)) $('trayMenu').style.display = 'none';
+});
+$('trmSync').addEventListener('click', () => { $('trayMenu').style.display = 'none'; $('atsSyncNowBtn').click(); });
+$('trmDash').addEventListener('click', () => { $('trayMenu').style.display = 'none'; openDashboard(); });
+$('trmSettings').addEventListener('click', () => { $('trayMenu').style.display = 'none'; openSettings(); });
+$('trmMute').addEventListener('click', () => {
+  settings.sound = !settings.sound;
+  saveSettings();
+  $('trayMenu').style.display = 'none';
+  showBalloon(settings.sound ? '\u{1F50A} Sounds on.' : '\u{1F507} Sounds muted.');
+});
+
 // --- Taskbar clock ---
 function updateClock() { $('trayClock').textContent = fmtClock(new Date()); }
 updateClock();
@@ -6515,11 +6601,17 @@ function renderCalendar() {
         (rec.note ? '<div class="cd-note">' + esc(rec.note) + '</div>' : '');
     }
     if (k === todayKey) cls += ' today';
-    html += '<div class="' + cls + '" data-k="' + k + '"><div class="cd-num">' + d + '</div>' + body + '</div>';
+    const tip = rec ? '' : ' title="Click to add hours or mark holiday / sick"';
+    html += '<div class="' + cls + '" data-k="' + k + '"' + tip + '><div class="cd-num">' + d + '</div>' + body + '</div>';
   }
   $('calGrid').innerHTML = html;
-  $('calGrid').querySelectorAll('.cal-cell.has').forEach(c =>
-    c.addEventListener('click', () => openDayDetail(c.dataset.k)));
+  // Recorded days open the detail view; empty days open the editor so a
+  // holiday or sick day is two clicks away
+  $('calGrid').querySelectorAll('.cal-cell:not(.empty)').forEach(c =>
+    c.addEventListener('click', () => {
+      if (history[c.dataset.k]) openDayDetail(c.dataset.k);
+      else openDayEditor(c.dataset.k);
+    }));
 }
 $('calPrev').addEventListener('click', () => {
   calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
