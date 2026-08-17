@@ -180,13 +180,17 @@
 
   #loadBtn { display: block; margin: 0 auto; }
 
-  #loadedBar {
-    display: none;
+  #atsBar {
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
   }
-  #loadedBar .ok { color: #008000; font-weight: bold; }
+  #atsStatusLine { font-weight: bold; }
+  .ats-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  #manualWrap { margin-top: 6px; text-align: right; }
+  #manualWrap a { color: #0645AD; font-size: 11px; }
+  #inputArea { margin-top: 8px; }
 
   #punchOutBtn {
     display: none;
@@ -1423,7 +1427,7 @@
   <div class="menu-bar"><span>File</span><span>View</span><span>Help</span></div>
 
   <div class="xp-body">
-  <p class="subtitle" id="subtitle">Target: 8 working hours. Load your punch JSON to see when you can leave.</p>
+  <p class="subtitle" id="subtitle">Target: 8 working hours. Your ATS punches load automatically.</p>
 
   <div class="profile-strip">
     <div class="avatar" id="profileAvatar"><span id="avatarLetter">?</span></div>
@@ -1439,8 +1443,16 @@
   </div>
 
   <fieldset>
-    <legend>Punch Data</legend>
-    <div id="inputArea">
+    <legend>ATS Sync</legend>
+    <div id="atsBar">
+      <span id="atsStatusLine">&#128274; Not connected to ATS.</span>
+      <span class="ats-btns">
+        <button id="atsSyncNowBtn">&#128257; Sync Now</button>
+        <button id="atsLoginBtn">Login&hellip;</button>
+      </span>
+    </div>
+    <div id="manualWrap"><a href="#" id="manualToggle">Paste punch JSON manually&hellip;</a></div>
+    <div id="inputArea" style="display:none">
       <div class="drop-zone" id="dropZone">
         <p><strong>Browse for a JSON file...</strong> or drag &amp; drop it here</p>
         <input type="file" id="fileInput" accept=".json,application/json" hidden>
@@ -1448,10 +1460,6 @@
 
       <textarea id="jsonInput" placeholder='...or paste the JSON here (loads automatically)'></textarea>
       <button id="loadBtn">Calculate My Leave Time</button>
-    </div>
-    <div id="loadedBar">
-      <span class="ok">&#10004; Punch data loaded.</span>
-      <button id="newDataBtn">Load New Data</button>
     </div>
   </fieldset>
 
@@ -2143,11 +2151,13 @@ $('jsonInput').addEventListener('paste', () => {
   setTimeout(() => loadJson($('jsonInput').value, true), 0);
 });
 
-// After a successful load the input hides; this brings it back
-$('newDataBtn').addEventListener('click', () => {
-  $('loadedBar').style.display = 'none';
-  $('inputArea').style.display = 'block';
-  $('jsonInput').focus();
+// Manual paste area is collapsed by default; this link toggles it
+$('manualToggle').addEventListener('click', e => {
+  e.preventDefault();
+  const ia = $('inputArea');
+  const open = ia.style.display !== 'block';
+  ia.style.display = open ? 'block' : 'none';
+  if (open) $('jsonInput').focus();
 });
 
 // Punch out in the app just before doing the real punch out at the office
@@ -2209,10 +2219,9 @@ function loadJson(text, focus) {
   if ('Notification' in window && Notification.permission === 'default') {
     try { Notification.requestPermission(); } catch (e) { /* older API */ }
   }
-  // Hide the input until "Load New Data" is clicked
+  // Hide the manual input again after a successful load
   $('jsonInput').value = '';
   $('inputArea').style.display = 'none';
-  $('loadedBar').style.display = 'flex';
   $('result').style.display = 'block';
   render();
   clearInterval(timer);
@@ -2240,11 +2249,34 @@ let atsWarned = false;
 
 function atsSave() { lsSet(ATS_KEY, JSON.stringify(ats)); }
 
+// Status line in the "ATS Sync" panel of the main window
+function atsStatus(msg, color) {
+  const el = $('atsStatusLine');
+  el.textContent = msg;
+  el.style.color = color || '';
+}
+
+// Reset the "Today" view (used when yesterday's data is stale or no punch yet)
+function clearTodayView() {
+  clearInterval(timer);
+  data = null;
+  lsRemove('timetracker_json');
+  $('result').style.display = 'none';
+}
+
 function atsProxyWarn() {
+  atsStatus('\u26A0\uFE0F Sync server unreachable \u2014 retrying every 15 min.', '#a00');
   if (atsWarned) return;
   atsWarned = true;
   showBalloon('\u26A0\uFE0F ATS Sync: could not reach the sync server. Will keep retrying every 15 minutes.');
 }
+
+$('atsSyncNowBtn').addEventListener('click', () => {
+  if (!ats || !ats.email || !ats.password) return atsSetup();
+  atsStatus('\u{1F501} Syncing with ATS\u2026');
+  atsFetchToday(true);
+});
+$('atsLoginBtn').addEventListener('click', () => atsSetup());
 
 function atsSetup() {
   showPrompt('ATS Sync \u2014 enter your hr.zilmoney.com email:', (ats && ats.email) || '', email => {
@@ -2282,7 +2314,8 @@ async function atsLogin(cb) {
     } else if (r.status === 401) {
       ats.token = null;
       atsSave();
-      showError('ATS login failed: ' + (j.error || 'wrong email or password') + '\nUse Start \u25B8 ATS Sync\u2026 to re-enter your details.');
+      atsStatus('\u2716 ATS login failed \u2014 click Login\u2026 to re-enter.', '#a00');
+      showError('ATS login failed: ' + (j.error || 'wrong email or password') + '\nClick Login\u2026 in the ATS Sync panel to re-enter your details.');
       if (cb) cb(false);
     } else {
       // 429 rate-limit or server error: silently retry on the next cycle
@@ -2311,14 +2344,18 @@ async function atsFetchToday(manual) {
     }
     if (!r.ok) return;
     const j = await r.json();
+    const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     if (!Array.isArray(j.sessions_today) || j.sessions_today.length === 0) {
-      if (manual) showBalloon('ATS: no punch-in recorded yet today.');
+      clearTodayView(); // don't keep showing a previous day's punches
+      atsStatus('\u23F3 No punch-in recorded yet today (checked ' + now + ').');
       return;
     }
     const text = JSON.stringify(j, null, 4);
-    if (text === lsGet('timetracker_json')) return; // nothing changed
-    loadJson(text, manual);
-    showBalloon('\u{1F501} ATS synced at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+    if (text !== lsGet('timetracker_json')) {
+      loadJson(text, manual);
+      showBalloon('\u{1F501} ATS synced at ' + now);
+    }
+    atsStatus('\u2714 Synced at ' + now + ' \u2014 refreshes every 15 min.', '#008000');
   } catch (e) {
     atsProxyWarn();
   }
@@ -2328,9 +2365,11 @@ function startAtsSync() {
   clearInterval(atsTimer);
   ats = lsGetJSON(ATS_KEY, null);
   if (!ats || !ats.email || !ats.password) {
+    atsStatus('\u{1F512} Not connected \u2014 click Login\u2026 to set up ATS Sync.');
     // First time on this profile: ask after the desktop settles
     setTimeout(atsSetup, 2500);
   } else {
+    atsStatus('\u{1F501} Syncing with ATS\u2026');
     atsFetchToday(false);
   }
   atsTimer = setInterval(() => atsFetchToday(false), 15 * 60 * 1000);
@@ -4657,8 +4696,6 @@ function loadUserState() {
     clearInterval(timer);
     data = null;
     $('result').style.display = 'none';
-    $('loadedBar').style.display = 'none';
-    $('inputArea').style.display = 'block';
     $('profileName').textContent = 'No user';
     $('avatarLetter').textContent = '?';
     $('smUser').textContent = 'No user';
@@ -4677,14 +4714,23 @@ function loadUserState() {
   applyPrestigeUi();
   applyUserUi();
   clearInterval(timer);
+  // Only restore saved punch data if it is actually from today; yesterday's
+  // data is already in history and would otherwise linger on screen.
   const saved = lsGet('timetracker_json');
+  let savedIsToday = false;
   if (saved) {
+    try {
+      const p = JSON.parse(saved);
+      savedIsToday = Array.isArray(p.sessions_today) && p.sessions_today.length > 0 &&
+        dateKey(new Date(p.sessions_today[0].punch_in)) === dateKey(new Date());
+    } catch (e) { }
+  }
+  if (savedIsToday) {
     loadJson(saved);
   } else {
+    if (saved) lsRemove('timetracker_json');
     data = null;
     $('result').style.display = 'none';
-    $('loadedBar').style.display = 'none';
-    $('inputArea').style.display = 'block';
   }
   renderMonth();
   initAutoBackup();
