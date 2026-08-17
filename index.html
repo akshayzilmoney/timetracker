@@ -68,6 +68,14 @@
     text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
   }
   .profile-sub { color: #D6DFF7; }
+  .pdot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    margin-right: 5px; vertical-align: middle;
+    box-shadow: inset 0 -1px 1px rgba(0,0,0,0.35), 0 0 2px rgba(0,0,0,0.3);
+  }
+  .pdot.on { background: #3fd54a; }
+  .pdot.brk { background: #f5a623; }
+  .pdot.off { background: #9aa0a6; }
 
   /* restored (small window) mode, toggled by the maximize button */
   .xp-window.windowed {
@@ -296,6 +304,27 @@
   .stat .value { font-size: 13px; font-weight: bold; margin-top: 2px; }
 
   .progress-wrap { margin-bottom: 10px; }
+
+  /* Defrag-style day timeline (one block = 5 minutes) */
+  .defrag-wrap { margin-bottom: 12px; }
+  #defragStrip {
+    display: flex; flex-wrap: wrap; gap: 1px; align-content: flex-start;
+    background: #000; padding: 3px; min-height: 20px;
+    border: 2px inset #d4d0c8;
+  }
+  #defragStrip i, .dl { display: inline-block; width: 5px; height: 13px; }
+  #defragStrip .work, .dl.work { background: #3050c8; }
+  #defragStrip .brk, .dl.brk { background: #d04038; }
+  #defragStrip .free, .dl.free { background: #e9e9e9; }
+  #defragStrip .now, .dl.now { background: #58e058; animation: defragBlink 1s steps(2) infinite; }
+  @keyframes defragBlink { 50% { background: #b8ffb8; } }
+  .defrag-legend {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; color: #444; margin-top: 3px;
+  }
+  .defrag-legend .dl { height: 9px; border: 1px solid #808080; margin-left: 6px; animation: none; }
+  .defrag-legend .dl:first-child { margin-left: 0; }
+  .defrag-note { margin-left: auto; color: #777; font-style: italic; }
   .progress-bar {
     height: 16px;
     background: #fff;
@@ -413,6 +442,17 @@
     box-shadow: inset 2px 0 3px rgba(0,0,0,0.25);
     color: #fff;
     font-size: 12px;
+    gap: 8px;
+  }
+  #traySync { cursor: pointer; font-size: 12px; line-height: 1; }
+  #traySync.spin { animation: traySpin 1s linear infinite; }
+  @keyframes traySpin { 50% { opacity: 0.35; } }
+  #trayChip {
+    font-size: 11px; white-space: nowrap; cursor: default;
+    padding: 1px 7px; border-radius: 3px;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.3);
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.25);
   }
 
   /* --- XP balloon tip --- */
@@ -1433,7 +1473,7 @@
     <div class="avatar" id="profileAvatar"><span id="avatarLetter">?</span></div>
     <div>
       <div class="profile-name" id="profileName">No user</div>
-      <div class="profile-sub">Logged in</div>
+      <div class="profile-sub"><span class="pdot off" id="presenceDot"></span><span id="presenceText">Logged in</span></div>
     </div>
     <div class="xp-wrap">
       <div class="xp-level" id="xpLevel">Level 1 &#8212; Intern</div>
@@ -1493,6 +1533,17 @@
     <div class="progress-wrap">
       <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
       <div class="progress-text" id="progressText">0%</div>
+    </div>
+
+    <div class="defrag-wrap">
+      <div id="defragStrip"></div>
+      <div class="defrag-legend">
+        <i class="dl work"></i> Work
+        <i class="dl brk"></i> Break
+        <i class="dl now"></i> Now
+        <i class="dl free"></i> Ahead
+        <span class="defrag-note">Estimated disk fragmentation: your workday (5 min per block)</span>
+      </div>
     </div>
 
     <table>
@@ -1592,7 +1643,7 @@
   <div class="start-btn">start</div>
   <div class="task-item">&#128336; Office Time Tracker</div>
   <div class="task-open" id="taskOpen"></div>
-  <div class="tray"><span id="trayClock">--:--</span></div>
+  <div class="tray"><span id="traySync" class="off" title="ATS Sync">&#128274;</span><span id="trayChip" style="display:none">--</span><span id="trayClock">--:--</span></div>
 </div>
 
 <div id="startMenu">
@@ -2256,16 +2307,27 @@ function atsStatus(msg, color) {
   el.style.color = color || '';
 }
 
+// Little tray icon next to the clock mirroring the sync state
+function traySyncIcon(state, tip) {
+  const el = $('traySync');
+  el.className = state;
+  el.textContent = state === 'err' ? '\u26A0\uFE0F' : state === 'off' ? '\u{1F512}' : '\u{1F501}';
+  el.title = 'ATS Sync' + (tip ? ' \u2014 ' + tip : '') + (state === 'off' ? '' : '. Click to sync now.');
+}
+$('traySync').addEventListener('click', () => $('atsSyncNowBtn').click());
+
 // Reset the "Today" view (used when yesterday's data is stale or no punch yet)
 function clearTodayView() {
   clearInterval(timer);
   data = null;
   lsRemove('timetracker_json');
   $('result').style.display = 'none';
+  ambientIdle();
 }
 
 function atsProxyWarn() {
   atsStatus('\u26A0\uFE0F Sync server unreachable \u2014 retrying every 15 min.', '#a00');
+  traySyncIcon('err', 'sync server unreachable');
   if (atsWarned) return;
   atsWarned = true;
   showBalloon('\u26A0\uFE0F ATS Sync: could not reach the sync server. Will keep retrying every 15 minutes.');
@@ -2274,6 +2336,7 @@ function atsProxyWarn() {
 $('atsSyncNowBtn').addEventListener('click', () => {
   if (!ats || !ats.email || !ats.password) return atsSetup();
   atsStatus('\u{1F501} Syncing with ATS\u2026');
+  traySyncIcon('spin', 'syncing\u2026');
   atsFetchToday(true);
 });
 $('atsLoginBtn').addEventListener('click', () => atsSetup());
@@ -2315,6 +2378,7 @@ async function atsLogin(cb) {
       ats.token = null;
       atsSave();
       atsStatus('\u2716 ATS login failed \u2014 click Login\u2026 to re-enter.', '#a00');
+      traySyncIcon('err', 'login failed');
       showError('ATS login failed: ' + (j.error || 'wrong email or password') + '\nClick Login\u2026 in the ATS Sync panel to re-enter your details.');
       if (cb) cb(false);
     } else {
@@ -2348,6 +2412,7 @@ async function atsFetchToday(manual) {
     if (!Array.isArray(j.sessions_today) || j.sessions_today.length === 0) {
       clearTodayView(); // don't keep showing a previous day's punches
       atsStatus('\u23F3 No punch-in recorded yet today (checked ' + now + ').');
+      traySyncIcon('', 'last synced ' + now + ', no punch-in yet');
       return;
     }
     const text = JSON.stringify(j, null, 4);
@@ -2356,6 +2421,7 @@ async function atsFetchToday(manual) {
       showBalloon('\u{1F501} ATS synced at ' + now);
     }
     atsStatus('\u2714 Synced at ' + now + ' \u2014 refreshes every 15 min.', '#008000');
+    traySyncIcon('', 'last synced ' + now);
   } catch (e) {
     atsProxyWarn();
   }
@@ -2366,10 +2432,12 @@ function startAtsSync() {
   ats = lsGetJSON(ATS_KEY, null);
   if (!ats || !ats.email || !ats.password) {
     atsStatus('\u{1F512} Not connected \u2014 click Login\u2026 to set up ATS Sync.');
+    traySyncIcon('off', 'not connected');
     // First time on this profile: ask after the desktop settles
     setTimeout(atsSetup, 2500);
   } else {
     atsStatus('\u{1F501} Syncing with ATS\u2026');
+    traySyncIcon('spin', 'syncing\u2026');
     atsFetchToday(false);
   }
   atsTimer = setInterval(() => atsFetchToday(false), 15 * 60 * 1000);
@@ -2502,6 +2570,44 @@ $('btnMax').addEventListener('click', () => {
 $('btnClose').addEventListener('click', shutdown);
 
 // --- Calculation ---
+// --- Ambient indicators: defrag day timeline, taskbar chip, presence dot ---
+let lastDefragSig = null;
+
+// Disk Defragmenter-style visualization of the day (one block = 5 minutes)
+function renderDefrag(sorted, now, isPastDay, targetMs, breakMs) {
+  const SLOT = 300000;
+  const first = new Date(sorted[0].punch_in).getTime();
+  const sess = sorted.map(s => {
+    const a = new Date(s.punch_in).getTime();
+    const b = s.punch_out ? new Date(s.punch_out).getTime() : (isPastDay ? a + targetMs : now.getTime());
+    return [a, Math.max(a, b)];
+  });
+  const lastEnd = Math.max.apply(null, sess.map(s => s[1]));
+  const liveEdge = isPastDay ? lastEnd : now.getTime();
+  // Draw blocks up to the expected leave time (or further, if already past it)
+  let end = Math.max(first + targetMs + breakMs, liveEdge);
+  end = Math.min(end, first + 57600000); // cap the strip at 16 hours
+  let out = '';
+  for (let t = first; t < end; t += SLOT) {
+    const mid = t + SLOT / 2;
+    let cls = 'free';
+    if (sess.some(s => mid >= s[0] && mid < s[1])) cls = 'work';
+    else if (mid < liveEdge) cls = 'brk';
+    if (!isPastDay && now.getTime() >= t && now.getTime() < t + SLOT) cls = 'now';
+    out += '<i class="' + cls + '"></i>';
+  }
+  $('defragStrip').innerHTML = out;
+}
+
+// Reset the ambient indicators when no punch data is on screen
+function ambientIdle() {
+  $('trayChip').style.display = 'none';
+  $('presenceDot').className = 'pdot off';
+  $('presenceText').textContent = 'Not punched in yet';
+  $('defragStrip').innerHTML = '';
+  lastDefragSig = null;
+}
+
 function render() {
   const now = new Date();
   const targetMs = (data.target_minutes || settings.targetMin) * 60000;
@@ -2595,6 +2701,38 @@ function render() {
   const pct = Math.min(100, (workedMs / targetMs) * 100);
   $('progressFill').style.width = pct + '%';
   $('progressText').textContent = pct.toFixed(1) + '% of ' + fmtDur(targetMs);
+
+  // Taskbar chip: worked / target at a glance, leave time on hover
+  const chip = $('trayChip');
+  chip.style.display = '';
+  chip.textContent = fmtDurShort(workedMs) + ' / ' + fmtDurShort(targetMs);
+  chip.title = isPastDay ? 'Last recorded day'
+    : remainingMs > 0
+      ? (isWorking ? 'You can leave at ' + fmtClock(new Date(now.getTime() + remainingMs))
+        : fmtDurShort(remainingMs) + ' to go')
+      : 'Target complete \u2014 you can leave!';
+
+  // MSN-style presence on the profile strip
+  const pd = $('presenceDot'), pt = $('presenceText');
+  if (isPastDay) {
+    pd.className = 'pdot off'; pt.textContent = 'Not punched in yet';
+  } else if (isWorking) {
+    pd.className = 'pdot on'; pt.textContent = 'At work since ' + fmtClock(new Date(sorted[0].punch_in));
+  } else {
+    const lastOut = new Date(sorted[sorted.length - 1].punch_out);
+    if (remainingMs > 0) {
+      pd.className = 'pdot brk'; pt.textContent = 'On break for ' + fmtDurShort(now - lastOut);
+    } else {
+      pd.className = 'pdot off'; pt.textContent = 'Punched out at ' + fmtClock(lastOut);
+    }
+  }
+
+  // Defrag strip only needs a rebuild once a minute (or when sessions change)
+  const defragSig = Math.floor(now.getTime() / 60000) + '|' + sorted.length + '|' + targetMs + '|' + (isPastDay ? 1 : 0);
+  if (defragSig !== lastDefragSig) {
+    lastDefragSig = defragSig;
+    renderDefrag(sorted, now, isPastDay, targetMs, breakMs);
+  }
 
   $('sessionsBody').innerHTML = rows.join('');
 
@@ -4696,6 +4834,7 @@ function loadUserState() {
     clearInterval(timer);
     data = null;
     $('result').style.display = 'none';
+    ambientIdle();
     $('profileName').textContent = 'No user';
     $('avatarLetter').textContent = '?';
     $('smUser').textContent = 'No user';
@@ -4710,7 +4849,7 @@ function loadUserState() {
   scores = lsGetJSON(SCORES_KEY, {});
   prestige = parseInt(lsGet(PRESTIGE_KEY) || '0', 10);
   settings = Object.assign({ targetMin: 480, sound: true, volume: 100 }, lsGetJSON(SETTINGS_KEY, {}));
-  notifiedDoneFor = notifiedOtFor = balloonShownFor = clippyShownFor = msnShownFor = lastMonthSig = null;
+  notifiedDoneFor = notifiedOtFor = balloonShownFor = clippyShownFor = msnShownFor = lastMonthSig = lastDefragSig = null;
   applyPrestigeUi();
   applyUserUi();
   clearInterval(timer);
@@ -4731,6 +4870,7 @@ function loadUserState() {
     if (saved) lsRemove('timetracker_json');
     data = null;
     $('result').style.display = 'none';
+    ambientIdle();
   }
   renderMonth();
   initAutoBackup();
