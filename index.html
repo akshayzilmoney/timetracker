@@ -2298,6 +2298,7 @@ let ats = null;
 let atsTimer = null; // timeout for the nightly 11 PM sync
 let atsWarned = false;
 let atsLastFetchAt = 0;
+let atsSnapsFetched = false; // nightly snapshots are merged once per page load
 
 function atsSave() { lsSet(ATS_KEY, JSON.stringify(ats)); }
 
@@ -2415,6 +2416,7 @@ async function atsFetchToday(manual) {
       clearTodayView(); // don't keep showing a previous day's punches
       atsStatus('\u23F3 No punch-in recorded yet today (checked ' + now + ').');
       traySyncIcon('', 'last synced ' + now + ', no punch-in yet');
+      atsAfterSync(); // still back-fill yesterday's real punch-out
       return;
     }
     const text = JSON.stringify(j, null, 4);
@@ -2424,9 +2426,69 @@ async function atsFetchToday(manual) {
     }
     atsStatus('\u2714 Synced at ' + now + ' \u2014 syncs on open and at 11 PM.', '#008000');
     traySyncIcon('', 'last synced ' + now);
+    atsAfterSync();
   } catch (e) {
     atsProxyWarn();
   }
+}
+
+// After a successful sync: hand the token to the Worker so its 11 PM cron can
+// snapshot the final punch-out, and back-fill history from stored snapshots.
+function atsAfterSync() {
+  if (ats.reg !== ats.token) atsRegister();
+  if (!atsSnapsFetched) { atsSnapsFetched = true; atsFetchSnapshots(); }
+}
+
+async function atsRegister() {
+  try {
+    const r = await fetch(ATS_PROXY + '/register', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + ats.token }
+    });
+    if (r.ok) { ats.reg = ats.token; atsSave(); }
+  } catch (e) { /* next sync retries */ }
+}
+
+// Merge the Worker's nightly snapshots into history: they carry the real
+// final punch-out for days where this browser only had an estimate.
+async function atsFetchSnapshots() {
+  try {
+    const r = await fetch(ATS_PROXY + '/snapshots', {
+      headers: { 'Authorization': 'Bearer ' + ats.token }
+    });
+    if (!r.ok) return;
+    const snaps = await r.json();
+    const todayK = dateKey(new Date());
+    let changed = false;
+    for (const day in snaps) {
+      if (day === todayK) continue; // today is handled live
+      const j = snaps[day];
+      if (!Array.isArray(j.sessions_today) || j.sessions_today.length === 0) continue;
+      const targetMs = (j.target_minutes || settings.targetMin) * 60000;
+      const sorted = [...j.sessions_today].sort((a, b) => new Date(a.punch_in) - new Date(b.punch_in));
+      let worked = 0, breaks = 0, lastEnd = null;
+      sorted.forEach(s => {
+        const a = new Date(s.punch_in);
+        // A missing final punch-out even in the 11 PM snapshot: assume target met
+        const b = s.punch_out ? new Date(s.punch_out) : new Date(a.getTime() + Math.max(0, targetMs - worked));
+        if (lastEnd) breaks += Math.max(0, a - lastEnd);
+        worked += Math.max(0, b - a);
+        lastEnd = b;
+      });
+      breaks = Math.max(breaks, (j.break_minutes || 0) * 60000);
+      const sess = sorted.map(s => [s.punch_in, s.punch_out || null]);
+      const prev = history[day];
+      if (!prev || Math.abs((prev.worked || 0) - worked) > 60000 ||
+        JSON.stringify(prev.sessions || null) !== JSON.stringify(sess)) {
+        saveDayToHistory(day, worked, breaks, prev && prev.target ? prev.target : targetMs, sess);
+        changed = true;
+      }
+    }
+    if (changed) {
+      renderMonth();
+      showBalloon('\u{1F4C5} History updated with recorded punch-outs from ATS.');
+    }
+  } catch (e) { /* snapshots are best-effort */ }
 }
 
 // Nightly sync at 11 PM records the day's final punch-out (if the tab is open)

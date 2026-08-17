@@ -1,3 +1,11 @@
 name = "ats-sync"
 main = "ats-worker.js"
 compatibility_date = "2026-08-01"
+
+[[kv_namespaces]]
+binding = "ATS_KV"
+id = "a7f8ef463eca4f5cbd64476389474940"
+
+# 17:30 UTC = 23:00 IST - nightly snapshot of everyone's final punch-out
+[triggers]
+crons = ["30 17 * * *"]
