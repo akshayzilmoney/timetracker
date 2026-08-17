@@ -2117,6 +2117,7 @@ function lsGet(base) { return localStorage.getItem(storeKey(base)); }
 function lsSet(base, val) {
   localStorage.setItem(storeKey(base), val);
   scheduleAutoBackup(); // mirror every change to the auto-backup file (if enabled)
+  scheduleCloudPush(); // and to the cloud copy (no-op until the initial pull)
 }
 function lsRemove(base) {
   localStorage.removeItem(storeKey(base));
@@ -2299,6 +2300,8 @@ let atsTimer = null; // timeout for the nightly 11 PM sync
 let atsWarned = false;
 let atsLastFetchAt = 0;
 let atsSnapsFetched = false; // nightly snapshots are merged once per page load
+let cloudReady = false; // becomes true after the initial cloud pull+merge
+let cloudPushTimer = null;
 
 function atsSave() { lsSet(ATS_KEY, JSON.stringify(ats)); }
 
@@ -2433,10 +2436,16 @@ async function atsFetchToday(manual) {
 }
 
 // After a successful sync: hand the token to the Worker so its 11 PM cron can
-// snapshot the final punch-out, and back-fill history from stored snapshots.
-function atsAfterSync() {
-  if (ats.reg !== ats.token) atsRegister();
-  if (!atsSnapsFetched) { atsSnapsFetched = true; atsFetchSnapshots(); }
+// snapshot the final punch-out, then back-fill history from stored snapshots
+// and merge this profile's cloud data (registration must complete first -
+// snapshots and cloud state only accept the registered token).
+async function atsAfterSync() {
+  if (ats.reg !== ats.token) await atsRegister();
+  if (!atsSnapsFetched) {
+    atsSnapsFetched = true;
+    atsFetchSnapshots();
+    cloudPull();
+  }
 }
 
 async function atsRegister() {
@@ -2449,13 +2458,26 @@ async function atsRegister() {
   } catch (e) { /* next sync retries */ }
 }
 
+// Fetch a Worker endpoint that requires the registered token; if another
+// device registered its own token in the meantime (401), re-register this
+// one and retry once.
+async function atsAuthedFetch(path, opts) {
+  const doFetch = () => fetch(ATS_PROXY + path, Object.assign({}, opts, {
+    headers: Object.assign({ 'Authorization': 'Bearer ' + ats.token }, (opts && opts.headers) || {})
+  }));
+  let r = await doFetch();
+  if (r.status === 401) {
+    await atsRegister();
+    r = await doFetch();
+  }
+  return r;
+}
+
 // Merge the Worker's nightly snapshots into history: they carry the real
 // final punch-out for days where this browser only had an estimate.
 async function atsFetchSnapshots() {
   try {
-    const r = await fetch(ATS_PROXY + '/snapshots', {
-      headers: { 'Authorization': 'Bearer ' + ats.token }
-    });
+    const r = await atsAuthedFetch('/snapshots');
     if (!r.ok) return;
     const snaps = await r.json();
     const todayK = dateKey(new Date());
@@ -2491,6 +2513,85 @@ async function atsFetchSnapshots() {
   } catch (e) { /* snapshots are best-effort */ }
 }
 
+// --- Cloud copy of profile data (Worker KV) so mobile/other devices see the
+// same history. Credentials are NOT synced - each device keeps its own.
+const CLOUD_KEYS = ['timetracker_history', 'timetracker_achievements', 'timetracker_prestige',
+  'timetracker_cds', 'timetracker_scores', 'timetracker_settings', 'timetracker_recycle'];
+
+async function cloudPull() {
+  try {
+    const r = await atsAuthedFetch('/state');
+    if (r.ok) {
+      const cloud = await r.json();
+      const d = cloud && cloud.data;
+      if (d) {
+        let monthDirty = false, otherDirty = false;
+        // History: fill unknown days; when both sides know a day, the fuller record wins
+        const ch = JSON.parse(d.timetracker_history || '{}');
+        for (const k in ch) {
+          if (!history[k] || (ch[k].worked || 0) > (history[k].worked || 0)) {
+            history[k] = Object.assign({}, history[k], ch[k]);
+            monthDirty = true;
+          }
+        }
+        if (monthDirty) lsSet(HISTORY_KEY, JSON.stringify(history));
+        // Achievements: union, keeping the earliest unlock date
+        const ca = JSON.parse(d.timetracker_achievements || '{}');
+        for (const k in ca) {
+          if (!achievements[k] || ca[k] < achievements[k]) { achievements[k] = ca[k]; otherDirty = true; }
+        }
+        if (otherDirty) lsSet(ACH_KEY, JSON.stringify(achievements));
+        // High scores: best of both devices
+        const cs = JSON.parse(d.timetracker_scores || '{}');
+        let dirty = false;
+        for (const k in cs) {
+          if ((cs[k] || 0) > (scores[k] || 0)) { scores[k] = cs[k]; dirty = true; }
+        }
+        if (dirty) { lsSet(SCORES_KEY, JSON.stringify(scores)); otherDirty = true; }
+        // CD collection: union
+        const cc = JSON.parse(d.timetracker_cds || '{}');
+        dirty = false;
+        for (const k in cc) {
+          if (!cds[k]) { cds[k] = cc[k]; dirty = true; }
+        }
+        if (dirty) { lsSet(CD_KEY, JSON.stringify(cds)); otherDirty = true; }
+        // Prestige: highest wins
+        const cp = parseInt(d.timetracker_prestige || '0', 10);
+        if (cp > prestige) { prestige = cp; lsSet(PRESTIGE_KEY, String(prestige)); applyPrestigeUi(); otherDirty = true; }
+        if (monthDirty) renderMonth();
+        if (monthDirty || otherDirty) showBalloon('\u2601\uFE0F Data synced from your other devices.');
+      }
+    }
+  } catch (e) { /* cloud copy is best-effort */ }
+  cloudReady = true;
+  scheduleCloudPush(); // upload the merged result
+}
+
+function scheduleCloudPush() {
+  if (!cloudReady || !ats || !ats.token) return;
+  clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(cloudPushNow, 60000);
+}
+
+async function cloudPushNow() {
+  if (!cloudReady || !ats || !ats.token) return;
+  clearTimeout(cloudPushTimer);
+  const out = {};
+  CLOUD_KEYS.forEach(k => { const v = lsGet(k); if (v !== null) out[k] = v; });
+  try {
+    await atsAuthedFetch('/state', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updated: new Date().toISOString(), user: currentUser, data: out })
+    });
+  } catch (e) { /* retried on the next change */ }
+}
+
+// Flush any pending cloud push when the tab goes to the background
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && cloudReady && cloudPushTimer) cloudPushNow();
+});
+
 // Nightly sync at 11 PM records the day's final punch-out (if the tab is open)
 function scheduleNightSync() {
   clearTimeout(atsTimer);
@@ -2506,6 +2607,10 @@ function scheduleNightSync() {
 
 function startAtsSync() {
   ats = lsGetJSON(ATS_KEY, null);
+  // Fresh profile login: re-pull snapshots and cloud state for this identity
+  atsSnapsFetched = false;
+  cloudReady = false;
+  clearTimeout(cloudPushTimer);
   if (!ats || !ats.email || !ats.password) {
     atsStatus('\u{1F512} Not connected \u2014 click Login\u2026 to set up ATS Sync.');
     traySyncIcon('off', 'not connected');

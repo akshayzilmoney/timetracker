@@ -13,7 +13,7 @@ const SNAP_TTL = 7 * 86400; // keep snapshots for a week
 function corsHeaders(request) {
   return {
     'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
     'Content-Type': 'application/json'
@@ -121,6 +121,23 @@ export default {
         try { out[k.name.slice(('snap:' + staff + ':').length)] = JSON.parse(v); } catch (e) { }
       }
       return json(out, 200, cors);
+    }
+
+    // Cloud copy of the tracker's profile data (history, achievements, ...)
+    // so the same user sees their data on any device. Same auth rule as
+    // snapshots: only the exact registered token may read or write.
+    if (url.pathname === '/ats/state' && (request.method === 'GET' || request.method === 'PUT')) {
+      const staff = jwtStaff(token);
+      const stored = staff && await env.ATS_KV.get('tok:' + staff);
+      if (!stored || stored !== token) return json({ error: 'unauthorized' }, 401, cors);
+      if (request.method === 'GET') {
+        const v = await env.ATS_KV.get('state:' + staff);
+        return new Response(v || 'null', { status: 200, headers: cors });
+      }
+      const body = await request.text();
+      if (body.length > 2000000) return json({ error: 'too large' }, 413, cors);
+      await env.ATS_KV.put('state:' + staff, body);
+      return json({ ok: true }, 200, cors);
     }
 
     return json({ error: 'not found' }, 404, cors);
