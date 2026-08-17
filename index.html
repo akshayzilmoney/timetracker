@@ -1607,6 +1607,7 @@
     <div class="sm-item" id="smRun">&#9654; Run...</div>
     <div class="sm-sep"></div>
     <div class="sm-item" id="smSettings">&#9881;&#65039; Control Panel</div>
+    <div class="sm-item" id="smAts">&#128257; ATS Sync&hellip;</div>
     <div class="sm-item" id="smExport">&#128196; Export History (CSV)</div>
     <div class="sm-item" id="smBackup">&#128190; Backup All Data</div>
     <div class="sm-item" id="smRestore">&#128194; Restore Backup</div>
@@ -2226,6 +2227,113 @@ function loadJson(text, focus) {
     void $('result').offsetWidth;
     $('result').classList.add('flash');
   }
+}
+
+// --- ATS Sync (hr.zilmoney.com auto-fetch) ---
+// Logs into the ATS through the local helper (ats-proxy.js), then pulls
+// /attendance/my-today every 15 minutes and feeds it into loadJson().
+const ATS_KEY = 'timetracker_ats';
+const ATS_PROXY = 'http://localhost:5178/ats';
+let ats = null;
+let atsTimer = null;
+let atsWarned = false;
+
+function atsSave() { lsSet(ATS_KEY, JSON.stringify(ats)); }
+
+function atsProxyWarn() {
+  if (atsWarned) return;
+  atsWarned = true;
+  showBalloon('\u26A0\uFE0F ATS Sync: helper not running. Open a terminal in the timetracker folder and run "node ats-proxy.js".');
+}
+
+function atsSetup() {
+  showPrompt('ATS Sync \u2014 enter your hr.zilmoney.com email:', (ats && ats.email) || '', email => {
+    email = (email || '').trim();
+    if (!email) return;
+    showPrompt('Enter the ATS password for ' + email + ':', '', pw => {
+      if (!pw) return;
+      ats = { email: email, password: pw, token: null, exp: 0 };
+      atsSave();
+      atsLogin(ok => {
+        if (ok) {
+          showBalloon('\u2705 ATS connected \u2014 timings will sync automatically every 15 minutes.');
+          atsFetchToday(true);
+        }
+      });
+    }, true);
+  });
+}
+
+async function atsLogin(cb) {
+  try {
+    const r = await fetch(ATS_PROXY + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: ats.email, password: ats.password })
+    });
+    let j = {};
+    try { j = await r.json(); } catch (e) { }
+    if (r.ok && j.token) {
+      // Keep the token, renew 5 minutes before it expires (API default: 24h)
+      ats.token = j.token;
+      ats.exp = Date.now() + ((j.expires_in || 86400) - 300) * 1000;
+      atsSave();
+      if (cb) cb(true);
+    } else if (r.status === 401) {
+      ats.token = null;
+      atsSave();
+      showError('ATS login failed: ' + (j.error || 'wrong email or password') + '\nUse Start \u25B8 ATS Sync\u2026 to re-enter your details.');
+      if (cb) cb(false);
+    } else {
+      // 429 rate-limit or server error: silently retry on the next cycle
+      if (cb) cb(false);
+    }
+  } catch (e) {
+    atsProxyWarn();
+    if (cb) cb(false);
+  }
+}
+
+async function atsFetchToday(manual) {
+  if (!ats || !ats.email || !ats.password) return;
+  if (!ats.token || Date.now() > ats.exp) {
+    return atsLogin(ok => { if (ok) atsFetchToday(manual); });
+  }
+  try {
+    const r = await fetch(ATS_PROXY + '/mytoday', {
+      headers: { 'Authorization': 'Bearer ' + ats.token }
+    });
+    if (r.status === 401) {
+      // Token expired server-side: log in again once, then retry
+      ats.token = null;
+      atsSave();
+      return atsLogin(ok => { if (ok) atsFetchToday(manual); });
+    }
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!Array.isArray(j.sessions_today) || j.sessions_today.length === 0) {
+      if (manual) showBalloon('ATS: no punch-in recorded yet today.');
+      return;
+    }
+    const text = JSON.stringify(j, null, 4);
+    if (text === lsGet('timetracker_json')) return; // nothing changed
+    loadJson(text, manual);
+    showBalloon('\u{1F501} ATS synced at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+  } catch (e) {
+    atsProxyWarn();
+  }
+}
+
+function startAtsSync() {
+  clearInterval(atsTimer);
+  ats = lsGetJSON(ATS_KEY, null);
+  if (!ats || !ats.email || !ats.password) {
+    // First time on this profile: ask after the desktop settles
+    setTimeout(atsSetup, 2500);
+  } else {
+    atsFetchToday(false);
+  }
+  atsTimer = setInterval(() => atsFetchToday(false), 15 * 60 * 1000);
 }
 
 let confirmCallback = null;
@@ -3846,6 +3954,7 @@ $('smWinamp').addEventListener('click', () => { closeStart(); openWinamp(); });
 $('smMsn').addEventListener('click', () => { closeStart(); openMsn(); });
 $('smDefrag').addEventListener('click', () => { closeStart(); openDefrag(); });
 $('smSettings').addEventListener('click', () => { closeStart(); openSettings(); });
+$('smAts').addEventListener('click', () => { closeStart(); atsSetup(); });
 $('smExport').addEventListener('click', () => { closeStart(); exportCsv(); });
 $('smBackup').addEventListener('click', () => { closeStart(); backupAll(); });
 $('smRestore').addEventListener('click', () => { closeStart(); $('restoreInput').click(); });
@@ -3867,6 +3976,7 @@ $('smAddUser').addEventListener('click', () => {
 $('smLogoff').addEventListener('click', () => {
   closeStart();
   waStop();
+  clearInterval(atsTimer);
   loggedIn = false;
   renderLogin();
   const l = $('loginScreen');
@@ -4527,6 +4637,7 @@ function finishLogin() {
   setTimeout(() => { l.style.display = 'none'; }, 600);
   startupChime();
   startDesktopLife();
+  startAtsSync();
   setTimeout(() => showClippy("It looks like you're trying to track work hours. Would you like help looking busy?"), 1500);
 }
 // Click the dial-up window to skip the handshake
