@@ -2425,6 +2425,7 @@ async function atsFetchToday(manual) {
       return atsLogin(ok => { if (ok) atsFetchToday(manual); });
     }
     if (!r.ok) return;
+    atsWarned = false; // connection is healthy again; re-arm the outage balloon
     const j = await r.json();
     const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     if (!Array.isArray(j.sessions_today) || j.sessions_today.length === 0) {
@@ -2696,7 +2697,6 @@ function showPrompt(msg, def, onOk, masked) {
   $('msgText').textContent = msg;
   $('msgInputWrap').style.display = 'block';
   $('msgInput').type = masked ? 'password' : 'text';
-  $('msgInput').inputMode = masked ? 'numeric' : '';
   $('msgInput').value = def || '';
   $('msgOk').style.display = '';
   $('msgYes').style.display = 'none';
@@ -4691,8 +4691,9 @@ async function hashPin(pin) {
 }
 function askPin(msg, cb) { showPrompt(msg, '', cb, true); }
 
-// Gate every profile switch behind the password. Profiles without one are
-// forced through the Security window first — there is no passwordless login.
+// Gate profile *switching* behind the password (the device's own last user
+// auto-logs-in at startup). Profiles without a password are forced through
+// the Security window first.
 function requestLogin(user) {
   if (loggedIn) return;
   if (hasPin(user)) {
@@ -6204,47 +6205,9 @@ $('pinballCanvas').addEventListener('touchend', () => {
   if (pb) { pb.l = false; pb.r = false; }
 });
 
-// --- Fireworks on punch out ---
+// --- Celebration chime (achievements, prestige) ---
 function tada() {
   playTones([[523, 0, 0.18], [659, 0.13, 0.18], [784, 0.26, 0.18], [1046, 0.4, 0.55]], 0.09);
-}
-function fireworks() {
-  const cv = document.createElement('canvas');
-  cv.className = 'cards-canvas';
-  cv.width = innerWidth;
-  cv.height = innerHeight;
-  document.body.appendChild(cv);
-  const c = cv.getContext('2d');
-  const COLS = ['#f87171', '#4ade80', '#38bdf8', '#facc15', '#c084fc', '#fff'];
-  let parts = [], launches = 6;
-  function boom(x, y) {
-    const col = COLS[Math.floor(Math.random() * COLS.length)];
-    for (let i = 0; i < 40; i++) {
-      const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 4;
-      parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 60 + Math.random() * 30, col });
-    }
-  }
-  const li = setInterval(() => {
-    boom(80 + Math.random() * (cv.width - 160), 80 + Math.random() * (cv.height * 0.5));
-    if (--launches <= 0) clearInterval(li);
-  }, 450);
-  function step() {
-    c.clearRect(0, 0, cv.width, cv.height);
-    parts.forEach(p => {
-      p.vy += 0.06;
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life--;
-      c.globalAlpha = Math.max(0, p.life / 90);
-      c.fillStyle = p.col;
-      c.fillRect(p.x, p.y, 3, 3);
-    });
-    c.globalAlpha = 1;
-    parts = parts.filter(p => p.life > 0);
-    if (parts.length || launches > 0) requestAnimationFrame(step);
-    else cv.remove();
-  }
-  step();
 }
 
 // --- Prestige ---
@@ -6255,7 +6218,7 @@ function appTitleText() {
 }
 function applyPrestigeUi() {
   document.querySelector('.title-text').textContent = appTitleText();
-  const av = document.querySelector('.profile-strip .avatar');
+  const av = $('profileAvatar');
   let star = av.querySelector('.star');
   if (prestige > 0) {
     if (!star) {
