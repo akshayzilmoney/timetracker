@@ -7083,6 +7083,13 @@ document.addEventListener('visibilitychange', () => {
 renderLogin();
 loadUserState();
 
+// Auto-login: this device already knows its last user, so skip the login
+// screen and password entirely. Switching profiles (Log Off) still asks.
+if (currentUser && hasPin(currentUser)) {
+  sessionStorage.setItem('tt_dialed', '1'); // no dial-up on silent logins
+  login(currentUser);
+}
+
 // --- PWA: service worker (only works over http(s); silently skipped for file://) ---
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* not fatal */ });
