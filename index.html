@@ -2295,8 +2295,9 @@ function loadJson(text, focus) {
 const ATS_KEY = 'timetracker_ats';
 const ATS_PROXY = 'https://ats-sync.akshayzilmoney.workers.dev/ats';
 let ats = null;
-let atsTimer = null;
+let atsTimer = null; // timeout for the nightly 11 PM sync
 let atsWarned = false;
+let atsLastFetchAt = 0;
 
 function atsSave() { lsSet(ATS_KEY, JSON.stringify(ats)); }
 
@@ -2326,11 +2327,11 @@ function clearTodayView() {
 }
 
 function atsProxyWarn() {
-  atsStatus('\u26A0\uFE0F Sync server unreachable \u2014 retrying every 15 min.', '#a00');
+  atsStatus('\u26A0\uFE0F Sync server unreachable \u2014 will retry on next open.', '#a00');
   traySyncIcon('err', 'sync server unreachable');
   if (atsWarned) return;
   atsWarned = true;
-  showBalloon('\u26A0\uFE0F ATS Sync: could not reach the sync server. Will keep retrying every 15 minutes.');
+  showBalloon('\u26A0\uFE0F ATS Sync: could not reach the sync server. Click the tray icon to retry.');
 }
 
 $('atsSyncNowBtn').addEventListener('click', () => {
@@ -2393,6 +2394,7 @@ async function atsLogin(cb) {
 
 async function atsFetchToday(manual) {
   if (!ats || !ats.email || !ats.password) return;
+  atsLastFetchAt = Date.now();
   if (!ats.token || Date.now() > ats.exp) {
     return atsLogin(ok => { if (ok) atsFetchToday(manual); });
   }
@@ -2420,15 +2422,27 @@ async function atsFetchToday(manual) {
       loadJson(text, manual);
       showBalloon('\u{1F501} ATS synced at ' + now);
     }
-    atsStatus('\u2714 Synced at ' + now + ' \u2014 refreshes every 15 min.', '#008000');
+    atsStatus('\u2714 Synced at ' + now + ' \u2014 syncs on open and at 11 PM.', '#008000');
     traySyncIcon('', 'last synced ' + now);
   } catch (e) {
     atsProxyWarn();
   }
 }
 
+// Nightly sync at 11 PM records the day's final punch-out (if the tab is open)
+function scheduleNightSync() {
+  clearTimeout(atsTimer);
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(23, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  atsTimer = setTimeout(() => {
+    atsFetchToday(false);
+    scheduleNightSync();
+  }, next - now);
+}
+
 function startAtsSync() {
-  clearInterval(atsTimer);
   ats = lsGetJSON(ATS_KEY, null);
   if (!ats || !ats.email || !ats.password) {
     atsStatus('\u{1F512} Not connected \u2014 click Login\u2026 to set up ATS Sync.');
@@ -2440,8 +2454,17 @@ function startAtsSync() {
     traySyncIcon('spin', 'syncing\u2026');
     atsFetchToday(false);
   }
-  atsTimer = setInterval(() => atsFetchToday(false), 15 * 60 * 1000);
+  scheduleNightSync();
 }
+
+// Coming back to the tab counts as "opening" it (throttled to once a minute)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden || !loggedIn) return;
+  if (!ats || !ats.email || !ats.password) return;
+  if (Date.now() - atsLastFetchAt < 60000) return;
+  traySyncIcon('spin', 'syncing\u2026');
+  atsFetchToday(false);
+});
 
 let confirmCallback = null;
 let promptCallback = null;
@@ -4153,7 +4176,7 @@ $('smAddUser').addEventListener('click', () => {
 $('smLogoff').addEventListener('click', () => {
   closeStart();
   waStop();
-  clearInterval(atsTimer);
+  clearTimeout(atsTimer);
   loggedIn = false;
   renderLogin();
   const l = $('loginScreen');
