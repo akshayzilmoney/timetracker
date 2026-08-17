@@ -362,25 +362,12 @@
     border-bottom: 1px solid #ACA899;
   }
   td { padding: 4px 6px; border-right: 1px solid #EDEDED; border-bottom: 1px solid #EDEDED; }
-  /* Numeric columns read right-aligned: Duration in today's sessions,
-     Worked/Breaks/+- in the monthly table */
+  /* Numeric Duration column reads right-aligned in today's sessions table */
   #result table th:last-child, #result table td:last-child { text-align: right; }
-  #monthly th:nth-child(n+2):nth-child(-n+4),
-  #monthly td:nth-child(n+2):nth-child(-n+4) { text-align: right; }
   .ongoing { color: #008000; font-weight: bold; }
-
-  .month-nav {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-  .month-nav h2 { font-size: 12px; font-weight: bold; }
-  .month-nav button { min-width: 24px; width: 24px; padding: 2px 0; }
   .pos { color: #008000; }
   .neg { color: #C00000; }
   .muted { color: #555; text-align: center; padding: 10px 0; }
-  .day-today { color: #0046D5; font-weight: bold; }
 
   .status-strip {
     border-top: 1px solid #ACA899;
@@ -970,11 +957,6 @@
   .df-grid i { display: block; height: 10px; }
   .df-status { margin-top: 6px; color: #444; }
 
-  /* --- monthly chart + notes --- */
-  #monthChart { width: 100%; height: 90px; background: #fff; border: 1px solid #7F9DB9; margin-bottom: 8px; display: block; }
-  .notecell { cursor: pointer; text-align: center; }
-  .mrow { cursor: grab; }
-
   /* --- minesweeper difficulty --- */
   .mine-diff { display: flex; gap: 4px; margin-bottom: 6px; }
   .mine-diff button { min-width: 0; padding: 2px 8px; font-size: 10px; }
@@ -1192,7 +1174,6 @@
   @keyframes winFade { from { opacity: 0; } to { opacity: 1; } }
   .balloon { animation: balloonIn .2s ease-out; }
   @keyframes balloonIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  .month-nav #todayMonth { width: auto; min-width: 0; padding: 2px 8px; }
   #result.flash fieldset { animation: resultFlash 1.2s ease-out; }
   @keyframes resultFlash { 0% { box-shadow: 0 0 0 3px #FFC73C; } 100% { box-shadow: none; } }
   #dialup { cursor: pointer; }
@@ -1413,7 +1394,6 @@
     .cal-cell .cd-hours { font-size: 11px; }
     .cal-cell .cd-note { display: none; }
   }
-  .month-nav #todayMonth, .month-nav #openDash { width: auto; min-width: 0; padding: 2px 8px; }
   @media (max-width: 640px) {
     .dash-head { padding: 10px 12px; flex-wrap: wrap; gap: 10px; }
     #dashSearch { width: 100%; order: 3; }
@@ -1585,46 +1565,6 @@
     </div>
   </fieldset>
 
-  <div id="monthly">
-    <fieldset>
-    <legend>Monthly History</legend>
-    <div class="month-nav">
-      <button id="prevMonth" title="Previous month">&#8249;</button>
-      <h2 id="monthTitle"></h2>
-      <span>
-        <button id="openDash" title="Open full history dashboard">&#128200;</button>
-        <button id="todayMonth" title="Jump to current month">Today</button>
-        <button id="nextMonth" title="Next month">&#8250;</button>
-      </span>
-    </div>
-
-    <div class="stats">
-      <div class="stat">
-        <div class="label">Total Worked</div>
-        <div class="value" id="mTotalVal">-</div>
-      </div>
-      <div class="stat">
-        <div class="label">Avg / Day</div>
-        <div class="value" id="mAvgVal">-</div>
-      </div>
-      <div class="stat">
-        <div class="label">Net +/-</div>
-        <div class="value" id="mNetVal">-</div>
-      </div>
-    </div>
-
-    <canvas id="monthChart" height="90"></canvas>
-
-    <table>
-      <thead>
-        <tr><th>Date</th><th>Worked</th><th>Breaks</th><th>+/-</th><th>&#9998;</th></tr>
-      </thead>
-      <tbody id="monthBody"></tbody>
-    </table>
-    <div class="muted" style="padding:4px 0 0">Tip: click &#9998; on a row to add a note.</div>
-    <div class="muted" id="monthEmpty" style="display:none">No recorded days this month.</div>
-    </fieldset>
-  </div>
   </div>
 
   <div class="status-strip" id="statusStrip">Ready</div>
@@ -2164,7 +2104,6 @@ let history = lsGetJSON(HISTORY_KEY, {});
 const RECYCLE_KEY = 'timetracker_recycle';
 let recycle = lsGetJSON(RECYCLE_KEY, {});
 
-let viewMonth = new Date(); // month currently shown in the monthly view
 
 function dateKey(d) {
   return d.getFullYear() + '-' +
@@ -2956,7 +2895,7 @@ function render() {
   }
 
   // Record this day in monthly history (keyed by the day of the first punch-in).
-  // Only persist + rebuild the monthly table/chart when a displayed value actually
+  // Only persist + refresh the week strip/XP when a displayed value actually
   // changes (once a minute), so the live 1s tick doesn't thrash the DOM.
   const dayKey = dateKey(new Date(sorted[0].punch_in));
   const monthSig = dayKey + '|' + Math.floor(workedMs / 60000) + '|' + Math.floor(breakMs / 60000) + '|' + targetMs;
@@ -3049,141 +2988,23 @@ function fmtDurShort(ms) {
   return (totalMin < 0 ? '-' : '') + h + 'h ' + String(m).padStart(2, '0') + 'm';
 }
 
+// The monthly table moved to the Dashboard (My Computer); this now only
+// refreshes the week strip, the XP bar and the month-based achievements.
 function renderMonth() {
-  const y = viewMonth.getFullYear();
-  const mo = viewMonth.getMonth();
-  const prefix = y + '-' + String(mo + 1).padStart(2, '0');
-
-  $('monthTitle').textContent = viewMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-
-  const days = Object.keys(history)
-    .filter(k => k.startsWith(prefix))
-    .sort();
-
-  let totalWorked = 0, totalNet = 0, workedDays = 0;
-  const todayKey = dateKey(new Date());
-  const rows = days.map(k => {
+  const prefix = dateKey(new Date()).slice(0, 7);
+  let totalWorked = 0, totalNet = 0;
+  Object.keys(history).forEach(k => {
+    if (!k.startsWith(prefix)) return;
     const d = history[k];
-    const dayNum = parseInt(k.slice(8), 10);
-    const label = new Date(y, mo, dayNum).toLocaleDateString(undefined, { weekday: 'short' }) + ' ' + dayNum;
-    const noteCell = '<td class="notecell" title="' + (d.note ? esc(d.note) : 'Add a note') + '">' + (d.note ? '\uD83D\uDCDD' : '\u270E') + '</td>';
-    if (isAbsence(d)) {
-      return '<tr class="mrow" data-day="' + k + '">' +
-        '<td' + (k === todayKey ? ' class="day-today"' : '') + '>' + label + '</td>' +
-        '<td colspan="2">' + kindLabel(d) + '</td>' +
-        '<td class="muted">\u2014</td>' + noteCell + '</tr>';
-    }
-    const net = d.worked - (d.target || settings.targetMin * 60000);
+    if (isAbsence(d)) return;
     totalWorked += d.worked;
-    totalNet += net;
-    workedDays++;
-    return '<tr class="mrow" data-day="' + k + '">' +
-      '<td' + (k === todayKey ? ' class="day-today"' : '') + '>' + label + '</td>' +
-      '<td>' + fmtDurShort(d.worked) + '</td>' +
-      '<td>' + fmtDurShort(d.breaks || 0) + '</td>' +
-      '<td class="' + (net >= 0 ? 'pos' : 'neg') + '">' + (net >= 0 ? '+' : '') + fmtDurShort(net) + '</td>' +
-      noteCell + '</tr>';
+    totalNet += d.worked - (d.target || settings.targetMin * 60000);
   });
-
-  $('monthBody').innerHTML = rows.join('');
-  $('monthBody').querySelectorAll('.mrow').forEach(tr => {
-    tr.querySelector('.notecell').addEventListener('click', () => editNote(tr.dataset.day));
-  });
-  drawMonthChart(y, mo, prefix);
-  $('monthEmpty').style.display = days.length ? 'none' : 'block';
-  $('mTotalVal').textContent = workedDays ? fmtDurShort(totalWorked) : '-';
-  $('mAvgVal').textContent = workedDays ? fmtDurShort(totalWorked / workedDays) : '-';
-  const netEl = $('mNetVal');
-  netEl.textContent = workedDays ? (totalNet >= 0 ? '+' : '') + fmtDurShort(totalNet) : '-';
-  netEl.className = 'value ' + (workedDays ? (totalNet >= 0 ? 'pos' : 'neg') : '');
-
-  // Month-based achievements (only judged on the current month)
-  if (prefix === dateKey(new Date()).slice(0, 7)) {
-    if (totalNet >= 5 * 3600000) award('overtime5');
-    if (totalWorked >= 100 * 3600000) award('hundred');
-  }
-
+  if (totalNet >= 5 * 3600000) award('overtime5');
+  if (totalWorked >= 100 * 3600000) award('hundred');
   renderWeek();
   renderXP();
 }
-
-// --- Per-day notes ---
-function editNote(k) {
-  showPrompt('Note for ' + k + ' (leave empty to remove):', (history[k] && history[k].note) || '', val => {
-    if (!history[k]) return;
-    val = val.trim();
-    if (val) history[k].note = val;
-    else delete history[k].note;
-    lsSet(HISTORY_KEY, JSON.stringify(history));
-    renderMonth();
-  });
-}
-
-// --- Monthly bar chart ---
-function drawMonthChart(y, mo, prefix) {
-  const cv = $('monthChart');
-  const w = cv.clientWidth || 560;
-  if (cv.width !== w) cv.width = w;
-  const h = cv.height;
-  const c = cv.getContext('2d');
-  c.clearRect(0, 0, w, h);
-  const dim = new Date(y, mo + 1, 0).getDate();
-  const defTarget = settings.targetMin * 60000;
-  let maxMs = defTarget;
-  for (let d = 1; d <= dim; d++) {
-    const rec = history[prefix + '-' + String(d).padStart(2, '0')];
-    if (rec) maxMs = Math.max(maxMs, rec.worked);
-  }
-  maxMs *= 1.1;
-  const bw = w / dim;
-  for (let d = 1; d <= dim; d++) {
-    const rec = history[prefix + '-' + String(d).padStart(2, '0')];
-    if (!rec) continue;
-    if (isAbsence(rec)) {
-      c.fillStyle = '#38bdf8';
-      c.fillRect((d - 1) * bw + 1, h - 18, Math.max(2, bw - 2), 6);
-      continue;
-    }
-    const bh = rec.worked / maxMs * (h - 14);
-    const tgt = rec.target || defTarget;
-    c.fillStyle = rec.worked >= tgt ? '#2FB833' : '#C00000';
-    c.fillRect((d - 1) * bw + 1, h - 12 - bh, Math.max(2, bw - 2), bh);
-  }
-  // dashed target line
-  const ty = h - 12 - (defTarget / maxMs) * (h - 14);
-  c.strokeStyle = '#0046D5';
-  c.setLineDash([4, 3]);
-  c.beginPath(); c.moveTo(0, ty); c.lineTo(w, ty); c.stroke();
-  c.setLineDash([]);
-  // sparse day labels
-  c.fillStyle = '#555';
-  c.font = '9px Tahoma';
-  for (let d = 1; d <= dim; d += 5) c.fillText(d, (d - 1) * bw + 2, h - 2);
-}
-
-$('prevMonth').addEventListener('click', () => {
-  viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
-  renderMonth();
-});
-$('nextMonth').addEventListener('click', () => {
-  viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
-  renderMonth();
-});
-$('todayMonth').addEventListener('click', () => {
-  viewMonth = new Date();
-  renderMonth();
-});
-$('openDash').addEventListener('click', openDashboard);
-// Arrow keys navigate months (unless typing or a game is open)
-document.addEventListener('keydown', e => {
-  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-  if (e.target.matches('input, textarea')) return;
-  if ($('snakeWindow').style.display === 'block' || $('pinballWindow').style.display === 'block' || $('rrWindow').style.display === 'block') return;
-  if ($('msgOverlay').style.display === 'flex') return;
-  if ($('dashboard').style.display === 'block') return;
-  viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + (e.key === 'ArrowRight' ? 1 : -1), 1);
-  renderMonth();
-});
 
 // --- Desktop icons ---
 document.querySelectorAll('.dicon').forEach(icon => {
@@ -4322,7 +4143,7 @@ document.querySelector('.start-btn').addEventListener('click', e => {
 document.addEventListener('click', e => {
   if (!e.target.closest('#startMenu') && !e.target.closest('.start-btn')) closeStart();
 });
-$('smHours').addEventListener('click', () => { closeStart(); $('monthly').scrollIntoView({ behavior: 'smooth' }); });
+$('smHours').addEventListener('click', () => { closeStart(); openDashboard(); });
 $('smMine').addEventListener('click', () => { closeStart(); openMinesweeper(); });
 $('smRun').addEventListener('click', () => {
   closeStart();
