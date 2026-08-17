@@ -1,6 +1,6 @@
 {
-  "name": "Office Time Tracker",
-  "short_name": "TimeTracker",
+  "name": "o5s",
+  "short_name": "o5s",
   "description": "Track your office hours, XP-style.",
   "start_url": "./",
   "display": "standalone",

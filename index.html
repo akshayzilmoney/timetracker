@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#245EDC">
 <link rel="manifest" href="manifest.json">
-<title>Office Time Tracker</title>
+<title>o5s</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -1462,7 +1462,7 @@
 <div class="xp-window windowed">
   <div class="title-bar">
     <span class="title-icon">&#128336;</span>
-    <span class="title-text">Office Time Tracker</span>
+    <span class="title-text">o5s</span>
     <span class="title-buttons">
       <span class="tbtn" id="btnMin" title="Minimize">&#95;</span><span class="tbtn" id="btnMax" title="Maximize">&#9633;</span><span class="tbtn close" id="btnClose" title="Close">&#10005;</span>
     </span>
@@ -1580,7 +1580,7 @@
 <div class="overlay" id="msgOverlay">
   <div class="msgbox">
     <div class="title-bar">
-      <span class="title-text">Office Time Tracker</span>
+      <span class="title-text">o5s</span>
       <span class="title-buttons"><span class="tbtn close" id="msgX">&#10005;</span></span>
     </div>
     <div class="msg-body">
@@ -1598,13 +1598,13 @@
 
 <div class="balloon" id="balloon">
   <span class="b-close" id="balloonClose">&#10005;</span>
-  <div class="b-title">&#9200; Office Time Tracker</div>
+  <div class="b-title">&#9200; o5s</div>
   <div id="balloonText"></div>
 </div>
 
 <div class="taskbar">
   <div class="start-btn">start</div>
-  <div class="task-item">&#128336; Office Time Tracker</div>
+  <div class="task-item">&#128336; o5s</div>
   <div class="task-open" id="taskOpen"></div>
   <div class="tray"><span id="traySync" class="off" title="ATS Sync">&#128274;</span><span id="trayChip" style="display:none">--</span><span id="trayClock">--:--</span></div>
 </div>
@@ -2042,7 +2042,7 @@
 </div>
 
 <div id="bootScreen">
-  <div class="boot-title">Office Time Tracker<span> XP</span></div>
+  <div class="boot-title">o5s<span> XP</span></div>
   <div class="boot-bar"><div class="boot-blocks"><i></i><i></i><i></i></div></div>
 </div>
 
@@ -3471,7 +3471,7 @@ let tmIv = null;
 function tmApps() {
   const apps = [];
   if (mainWinEl.style.display !== 'none') {
-    apps.push(['Office Time Tracker', () => shutdown()]);
+    apps.push(['o5s', () => shutdown()]);
   }
   WIN_REGISTRY.forEach(([id, label]) => {
     const w = $(id);
@@ -6187,7 +6187,7 @@ function fireworks() {
 const PRESTIGE_KEY = 'timetracker_prestige';
 let prestige = parseInt(lsGet(PRESTIGE_KEY) || '0', 10);
 function appTitleText() {
-  return prestige > 0 ? 'Office Time Tracker Professional Edition' : 'Office Time Tracker';
+  return prestige > 0 ? 'o5s Professional Edition' : 'o5s';
 }
 function applyPrestigeUi() {
   document.querySelector('.title-text').textContent = appTitleText();
