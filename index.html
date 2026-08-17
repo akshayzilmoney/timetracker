@@ -16,19 +16,20 @@
     background: linear-gradient(180deg,
       #1E5799 0%, #3E8FD0 30%, #7DB9E8 52%, #BFE0F5 60%,
       #8FCB5B 66%, #4FA32E 82%, #2E7D1E 100%) fixed;
-    min-height: 100vh;
+    /* The desktop itself never scrolls - only window content does, like real XP */
+    height: 100vh;
+    overflow: hidden;
   }
 
   /* --- XP window chrome (fullscreen / maximized by default) --- */
   .xp-window {
     width: 100%;
-    min-height: calc(100vh - 30px); /* leave room for the taskbar */
+    height: calc(100vh - 30px); /* leave room for the taskbar */
     display: flex;
     flex-direction: column;
-    margin-bottom: 30px;
     background: #ECE9D8;
   }
-  .xp-window .xp-body { flex: 1; }
+  .xp-window .xp-body { flex: 1; overflow-y: auto; }
 
   /* Fullscreen: single centered column with margins on both sides */
   .xp-body {
@@ -80,7 +81,9 @@
 
   /* restored (small window) mode, toggled by the maximize button */
   .xp-window.windowed {
+    height: auto;
     min-height: 220px;
+    max-height: calc(100vh - 78px); /* stays clear of the taskbar */
     width: 660px;      /* wide enough that nothing needs to scroll */
     max-width: 94vw;
     min-width: 360px;
@@ -1404,6 +1407,10 @@
 
   /* --- mobile / touch --- */
   @media (max-width: 640px) {
+    /* Icons flow above the window on phones, so the page scrolls normally there */
+    body { height: auto; overflow: auto; min-height: 100vh; }
+    .xp-window { height: auto; min-height: calc(100vh - 30px); margin-bottom: 30px; }
+    .xp-window .xp-body { overflow-y: visible; }
     .desktop-icons { position: static; flex-direction: row; flex-wrap: wrap; gap: 8px; padding: 8px; }
     .dicon { width: 64px; }
     .xp-window.windowed { width: auto; max-width: none; min-width: 0; margin: 8px; }
