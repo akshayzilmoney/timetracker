@@ -919,8 +919,8 @@
   .avatar .star { position: absolute; top: -9px; right: -9px; font-size: 13px; }
   #prestigeBtn { display: none; margin-top: 4px; min-width: 0; padding: 2px 8px; font-size: 10px; }
 
-  /* --- pipes screensaver canvas --- */
-  #ssPipes { display: block; }
+  /* --- pipes screensaver canvas (rendered at reduced resolution, GPU-upscaled) --- */
+  #ssPipes { display: block; width: 100%; height: 100%; }
 
   /* --- profile XP bar --- */
   .xp-wrap { flex: 1; margin-left: 8px; }
@@ -2279,7 +2279,11 @@ function loadJson(text, focus) {
   clearInterval(timer);
   // Only tick live when the data is for today
   if (dateKey(new Date(parsed.sessions_today[0].punch_in)) === dateKey(new Date())) {
-    timer = setInterval(render, 1000);
+    // While the screensaver runs, skip the per-second DOM work; a once-a-minute
+    // render keeps history saving, then wake-up re-renders instantly.
+    timer = setInterval(() => {
+      if (!ssOn || Date.now() % 60000 < 1000) render();
+    }, 1000);
   }
   // Smooth-scroll to the result and flash it when loaded by a user action
   if (focus) {
@@ -4613,7 +4617,7 @@ $('msnClose').addEventListener('click', () => { $('msnToast').style.display = 'n
 
 // --- Screensaver (mode + idle delay configurable in Display Properties) ---
 let lastActivity = Date.now(), ssOn = false, ssRAF = null;
-let ssCfg = { mode: 'random', wait: 2 };
+let ssCfg = { mode: 'random', wait: 10 };
 try { ssCfg = Object.assign(ssCfg, JSON.parse(localStorage.getItem('timetracker_ss')) || {}); } catch (e) { /* defaults */ }
 ['mousemove', 'keydown', 'pointerdown'].forEach(ev =>
   document.addEventListener(ev, () => {
@@ -4628,43 +4632,51 @@ function startScreensaver() {
   ssOn = true;
   $('screensaver').style.display = 'block';
   const cv = $('ssPipes');
-  cv.width = innerWidth;
-  cv.height = innerHeight;
-  const c = cv.getContext('2d');
+  // Render at 2/3 resolution and let the GPU upscale: much less fill work per
+  // frame, and the slight softness reads as period-correct CRT blur.
+  cv.width = Math.round(innerWidth * 0.66);
+  cv.height = Math.round(innerHeight * 0.66);
+  const c = cv.getContext('2d', { alpha: false });
   c.fillStyle = '#000';
   c.fillRect(0, 0, cv.width, cv.height);
   const mode = ssCfg.mode === 'random' ? (Math.random() < 0.5 ? 'stars' : 'pipes') : ssCfg.mode;
   if (mode === 'stars') runStarfield(cv, c);
   else runPipes(cv, c);
 }
+// Both animations are capped at ~30fps - plenty for a screensaver and half the work
 function runStarfield(cv, c) {
   const cx = cv.width / 2, cy = cv.height / 2;
+  const N = Math.min(250, Math.round(cv.width * cv.height / 3500));
   const stars = [];
-  for (let i = 0; i < 250; i++) {
+  for (let i = 0; i < N; i++) {
     stars.push({ x: Math.random() * cv.width - cx, y: Math.random() * cv.height - cy, z: Math.random() * cv.width });
   }
-  function step() {
+  let last = 0;
+  function step(ts) {
     if (!ssOn) return;
+    ssRAF = requestAnimationFrame(step);
+    if (ts - last < 33) return;
+    last = ts;
     c.fillStyle = 'rgba(0,0,0,0.55)';
     c.fillRect(0, 0, cv.width, cv.height);
     c.fillStyle = '#fff';
-    stars.forEach(s => {
-      s.z -= 8;
+    for (let i = 0; i < N; i++) {
+      const s = stars[i];
+      s.z -= 6;
       if (s.z <= 1) {
         s.x = Math.random() * cv.width - cx;
         s.y = Math.random() * cv.height - cy;
         s.z = cv.width;
       }
       const k = 128 / s.z;
-      const size = Math.max(0.5, (1 - s.z / cv.width) * 3);
-      c.fillRect(s.x * k + cx, s.y * k + cy, size, size);
-    });
-    ssRAF = requestAnimationFrame(step);
+      const size = Math.max(1, ((1 - s.z / cv.width) * 3) | 0);
+      c.fillRect((s.x * k + cx) | 0, (s.y * k + cy) | 0, size, size);
+    }
   }
-  step();
+  ssRAF = requestAnimationFrame(step);
 }
 function runPipes(cv, c) {
-  const STEP = 24;
+  const STEP = 16;
   let px, py, dir, col, len;
   const DIRS = [[STEP, 0], [-STEP, 0], [0, STEP], [0, -STEP]];
   function newPipe() {
@@ -4676,8 +4688,12 @@ function runPipes(cv, c) {
   }
   newPipe();
   let cleared = Date.now();
-  function step() {
+  let last = 0;
+  function step(ts) {
     if (!ssOn) return;
+    ssRAF = requestAnimationFrame(step);
+    if (ts - last < 33) return;
+    last = ts;
     for (let k = 0; k < 3; k++) {
       if (Math.random() < 0.25) {
         const turns = dir[0] === 0 ? [[STEP, 0], [-STEP, 0]] : [[0, STEP], [0, -STEP]];
@@ -4686,12 +4702,12 @@ function runPipes(cv, c) {
       const nx = px + dir[0], ny = py + dir[1];
       if (nx < 0 || ny < 0 || nx > cv.width || ny > cv.height || ++len > 220) { newPipe(); continue; }
       c.strokeStyle = col;
-      c.lineWidth = 14;
+      c.lineWidth = 10;
       c.lineCap = 'round';
       c.beginPath(); c.moveTo(px, py); c.lineTo(nx, ny); c.stroke();
       c.strokeStyle = 'rgba(255,255,255,0.35)';
-      c.lineWidth = 4;
-      c.beginPath(); c.moveTo(px - 3, py - 3); c.lineTo(nx - 3, ny - 3); c.stroke();
+      c.lineWidth = 3;
+      c.beginPath(); c.moveTo(px - 2, py - 2); c.lineTo(nx - 2, ny - 2); c.stroke();
       px = nx; py = ny;
     }
     if (Date.now() - cleared > 30000) {
@@ -4699,14 +4715,14 @@ function runPipes(cv, c) {
       c.fillRect(0, 0, cv.width, cv.height);
       cleared = Date.now();
     }
-    ssRAF = requestAnimationFrame(step);
   }
-  step();
+  ssRAF = requestAnimationFrame(step);
 }
 function stopScreensaver() {
   ssOn = false;
   cancelAnimationFrame(ssRAF);
   $('screensaver').style.display = 'none';
+  if (data) render(); // wake up with fresh numbers immediately
 }
 
 // --- Shutdown ---
@@ -5415,9 +5431,9 @@ function startDesktopLife() {
   if (desktopLifeStarted) return;
   desktopLifeStarted = true;
   startPet();
-  setInterval(() => { if (Math.random() < 0.5) gooseRun(); }, 150000);
+  setInterval(() => { if (!ssOn && Math.random() < 0.5) gooseRun(); }, 150000);
   setTimeout(showVisitorBanner, 90000 + Math.random() * 120000);
-  setInterval(() => { if (Math.random() < 0.6) showVisitorBanner(); }, 240000);
+  setInterval(() => { if (!ssOn && Math.random() < 0.6) showVisitorBanner(); }, 240000);
 }
 
 // --- Virus prank ---
@@ -5583,7 +5599,7 @@ function startPet() {
     el.style.left = petX + 'px';
     el.style.transform = 'scaleX(' + (petDir > 0 ? 1 : -1) + ')';
   }, 40);
-  setInterval(() => { if (Math.random() < 0.5) petSay(randomFact()); }, 45000);
+  setInterval(() => { if (!ssOn && Math.random() < 0.5) petSay(randomFact()); }, 180000);
   setInterval(() => { // occasionally sit on the window title bar
     if (petMode !== 'walk' || mainMin) return; // no window to sit on when minimized
     petMode = 'sit';
