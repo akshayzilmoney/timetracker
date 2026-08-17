@@ -204,12 +204,6 @@
   #manualWrap a { color: #0645AD; font-size: 11px; }
   #inputArea { margin-top: 8px; }
 
-  #punchOutBtn {
-    display: none;
-    margin: 0 auto 12px;
-    font-weight: bold;
-  }
-
   /* --- XP message box --- */
   /* Above every screen (login 950, dashboard 1400, day modal 1500) so dialogs
      like the login screen's "Add User" prompt are never hidden behind them */
@@ -1548,8 +1542,6 @@
       <div class="leave-time" id="leaveTime">--:--</div>
     </div>
 
-    <button id="punchOutBtn">Punch Out Now</button>
-
     <div class="stats">
       <div class="stat">
         <div class="label">Worked</div>
@@ -2212,18 +2204,6 @@ $('manualToggle').addEventListener('click', e => {
   const open = ia.style.display !== 'block';
   ia.style.display = open ? 'block' : 'none';
   if (open) $('jsonInput').focus();
-});
-
-// Punch out in the app just before doing the real punch out at the office
-$('punchOutBtn').addEventListener('click', () => {
-  if (!data) return;
-  const open = data.sessions_today.find(s => !s.punch_out);
-  if (!open) return;
-  open.punch_out = new Date().toISOString();
-  lsSet('timetracker_json', JSON.stringify(data, null, 2));
-  tada();
-  fireworks();
-  render();
 });
 
 function readFile(file) {
@@ -2912,8 +2892,6 @@ function render() {
     leaveTime.textContent = fmtClock(new Date(now.getTime() + remainingMs));
     leaveTime.className = 'leave-time';
   }
-
-  $('punchOutBtn').style.display = (isWorking && !isPastDay) ? 'block' : 'none';
 
   $('statusStrip').textContent = badge.textContent + '  |  Worked: ' + fmtDur(workedMs);
 
