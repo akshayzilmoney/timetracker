@@ -2230,10 +2230,10 @@ function loadJson(text, focus) {
 }
 
 // --- ATS Sync (hr.zilmoney.com auto-fetch) ---
-// Logs into the ATS through the local helper (ats-proxy.js), then pulls
-// /attendance/my-today every 15 minutes and feeds it into loadJson().
+// Logs into the ATS through the Cloudflare Worker proxy (ats-worker.js), then
+// pulls /attendance/my-today every 15 minutes and feeds it into loadJson().
 const ATS_KEY = 'timetracker_ats';
-const ATS_PROXY = 'http://localhost:5178/ats';
+const ATS_PROXY = 'https://ats-sync.akshayzilmoney.workers.dev/ats';
 let ats = null;
 let atsTimer = null;
 let atsWarned = false;
@@ -2243,7 +2243,7 @@ function atsSave() { lsSet(ATS_KEY, JSON.stringify(ats)); }
 function atsProxyWarn() {
   if (atsWarned) return;
   atsWarned = true;
-  showBalloon('\u26A0\uFE0F ATS Sync: helper not running. Open a terminal in the timetracker folder and run "node ats-proxy.js".');
+  showBalloon('\u26A0\uFE0F ATS Sync: could not reach the sync server. Will keep retrying every 15 minutes.');
 }
 
 function atsSetup() {
