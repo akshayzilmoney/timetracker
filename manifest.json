@@ -1,6 +1,6 @@
 {
-  "name": "o5s",
-  "short_name": "o5s",
+  "name": "O5S",
+  "short_name": "O5S",
   "description": "Track your office hours, XP-style.",
   "start_url": "./",
   "display": "standalone",
