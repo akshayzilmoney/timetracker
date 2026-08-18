@@ -42,15 +42,28 @@ function atsHeaders(token) {
   };
 }
 
-// Ask the ATS to refresh its attendance records from the punch devices.
-// Responds immediately; the refreshed data lands in my-today ~a minute later.
-function triggerAtsSync(token) {
-  return fetch(API + '/attendance/my-sync-status', { headers: atsHeaders(token) })
-    .catch(() => { });
+// my-sync-status kicks off / reports the ATS-side refresh from the punch
+// devices: {"status":"running","message":"Connecting to ..."} while it works.
+// my-today serves stale data until that refresh completes.
+function fetchSyncStatus(token) {
+  return fetch(API + '/attendance/my-sync-status', { headers: atsHeaders(token) });
 }
 
 function fetchMyToday(token) {
   return fetch(API + '/attendance/my-today', { headers: atsHeaders(token) });
+}
+
+// Poll my-sync-status until the refresh is done (first call triggers it).
+// Gives up after ~4 minutes so the cron never hangs.
+async function waitForAtsSync(token) {
+  for (let i = 0; i < 24; i++) {
+    try {
+      const r = await fetchSyncStatus(token);
+      const j = await r.json();
+      if (j.status !== 'running') return;
+    } catch (e) { return; }
+    await new Promise(res => setTimeout(res, 10000));
+  }
 }
 
 // Fetch my-today with a stored token and save it under snap:<staff>:<day>.
@@ -101,11 +114,15 @@ export default {
     }
 
     if (request.method === 'GET' && url.pathname === '/ats/mytoday') {
-      // ?sync=1 (manual sync): also ask the ATS to refresh from the punch
-      // devices. The refresh lands ~a minute later, so the client shows the
-      // current data now and re-fetches once the refresh is done.
-      if (url.searchParams.get('sync') === '1') await triggerAtsSync(token);
       const r = await fetchMyToday(token);
+      return new Response(await r.text(), { status: r.status, headers: cors });
+    }
+
+    // Kick off / report the ATS-side refresh. The client polls this on a
+    // manual sync (showing the live message) until status != "running",
+    // then re-fetches my-today for the refreshed punches.
+    if (request.method === 'GET' && url.pathname === '/ats/syncstatus') {
+      const r = await fetchSyncStatus(token);
       return new Response(await r.text(), { status: r.status, headers: cors });
     }
 
@@ -157,17 +174,15 @@ export default {
   },
 
   // Cron trigger (23:00 IST): snapshot the day for every registered token.
-  // First ask the ATS to refresh everyone's records, give that a minute to
-  // land, then snapshot so the stored punch-outs are the refreshed ones.
+  // Trigger the ATS-side refresh and wait for it to finish first, so the
+  // stored punch-outs are the refreshed ones.
   async scheduled(event, env) {
     const list = await env.ATS_KV.list({ prefix: 'tok:' });
-    const users = [];
     for (const k of list.keys) {
       const token = await env.ATS_KV.get(k.name);
-      if (token) users.push([k.name.slice(4), token]);
+      if (!token) continue;
+      await waitForAtsSync(token);
+      await takeSnapshot(env, k.name.slice(4), token);
     }
-    await Promise.all(users.map(u => triggerAtsSync(u[1])));
-    await new Promise(res => setTimeout(res, 90000));
-    for (const [staff, token] of users) await takeSnapshot(env, staff, token);
   }
 };

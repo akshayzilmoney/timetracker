@@ -2315,26 +2315,45 @@ $('traySync').addEventListener('click', () => $('atsSyncNowBtn').click());
 function skelShow() { if (!data) $('todaySkel').style.display = 'block'; }
 function skelHide() { $('todaySkel').style.display = 'none'; }
 
-// A manual sync asks the ATS to refresh its records from the punch devices,
-// which takes about a minute. Show a live countdown so the user knows fresh
-// data is on its way, then fetch my-today again once it has landed.
+// A manual sync kicks off an ATS-side refresh from the punch devices, which
+// takes about a minute. my-sync-status reports live progress ({"status":
+// "running","message":"Connecting to ..."}); poll it (the first call is what
+// triggers the refresh), show the ATS's own progress message so the user can
+// see it working, and fetch the refreshed my-today once it finishes.
 function atsRefreshCountdown() {
   clearInterval(atsResyncTimer);
-  let left = 90;
+  const started = Date.now();
+  let polling = false;
   traySyncIcon('spin', 'ATS refreshing punch data\u2026');
   showBalloon('\u{1F501} ATS refresh started \u2014 fresh punch data in about a minute.');
-  const tick = () => {
-    if (left <= 0) {
-      clearInterval(atsResyncTimer);
-      atsStatus('\u{1F501} Fetching refreshed ATS data\u2026');
-      atsFetchToday(false);
-      return;
-    }
-    atsStatus('\u23F3 ATS is refreshing punch data \u2014 updating in ' + left + 's\u2026', '#b8860b');
-    left--;
+  const finish = () => {
+    clearInterval(atsResyncTimer);
+    atsStatus('\u{1F501} Refresh done \u2014 fetching updated punches\u2026');
+    atsFetchToday(false);
   };
-  tick();
-  atsResyncTimer = setInterval(tick, 1000);
+  const poll = async () => {
+    if (polling) return; // a slow poll is still in flight
+    if (Date.now() - started > 180000) return finish(); // give up after 3 min
+    polling = true;
+    try {
+      const r = await fetch(ATS_PROXY + '/syncstatus', {
+        headers: { 'Authorization': 'Bearer ' + ats.token }
+      });
+      if (!r.ok) return finish();
+      const j = await r.json();
+      if (j.status === 'running') {
+        atsStatus('\u{1F504} ATS syncing\u2026 ' + (j.message || 'refreshing punch data'), '#b8860b');
+        return;
+      }
+      finish(); // sync completed (or reported an end state)
+    } catch (e) {
+      finish();
+    } finally {
+      polling = false;
+    }
+  };
+  poll();
+  atsResyncTimer = setInterval(poll, 3000);
 }
 
 // Offline awareness: don't attempt syncs, say so quietly, resync on return
@@ -2439,8 +2458,7 @@ async function atsFetchToday(manual) {
     return atsLogin(ok => { if (ok) atsFetchToday(manual); });
   }
   try {
-    // manual=true forces the ATS to refresh its own attendance records first
-    const r = await fetch(ATS_PROXY + '/mytoday' + (manual ? '?sync=1' : ''), {
+    const r = await fetch(ATS_PROXY + '/mytoday', {
       headers: { 'Authorization': 'Bearer ' + ats.token }
     });
     if (r.status === 401) {
