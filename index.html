@@ -2284,6 +2284,7 @@ const ATS_KEY = 'timetracker_ats';
 const ATS_PROXY = 'https://ats-sync.akshayzilmoney.workers.dev/ats';
 let ats = null;
 let atsTimer = null; // timeout for the nightly 11 PM sync
+let atsResyncTimer = null; // countdown while the ATS refreshes punch data
 let atsWarned = false;
 let atsLastFetchAt = 0;
 let atsSnapsFetched = false; // nightly snapshots are merged once per page load
@@ -2314,8 +2315,31 @@ $('traySync').addEventListener('click', () => $('atsSyncNowBtn').click());
 function skelShow() { if (!data) $('todaySkel').style.display = 'block'; }
 function skelHide() { $('todaySkel').style.display = 'none'; }
 
+// A manual sync asks the ATS to refresh its records from the punch devices,
+// which takes about a minute. Show a live countdown so the user knows fresh
+// data is on its way, then fetch my-today again once it has landed.
+function atsRefreshCountdown() {
+  clearInterval(atsResyncTimer);
+  let left = 90;
+  traySyncIcon('spin', 'ATS refreshing punch data\u2026');
+  showBalloon('\u{1F501} ATS refresh started \u2014 fresh punch data in about a minute.');
+  const tick = () => {
+    if (left <= 0) {
+      clearInterval(atsResyncTimer);
+      atsStatus('\u{1F501} Fetching refreshed ATS data\u2026');
+      atsFetchToday(false);
+      return;
+    }
+    atsStatus('\u23F3 ATS is refreshing punch data \u2014 updating in ' + left + 's\u2026', '#b8860b');
+    left--;
+  };
+  tick();
+  atsResyncTimer = setInterval(tick, 1000);
+}
+
 // Offline awareness: don't attempt syncs, say so quietly, resync on return
 function atsOfflineUi() {
+  clearInterval(atsResyncTimer);
   atsStatus('\u{1F4F4} Offline \u2014 showing cached data.', '#a00');
   traySyncIcon('offline', 'offline, showing cached data');
   skelHide();
@@ -2415,7 +2439,8 @@ async function atsFetchToday(manual) {
     return atsLogin(ok => { if (ok) atsFetchToday(manual); });
   }
   try {
-    const r = await fetch(ATS_PROXY + '/mytoday', {
+    // manual=true forces the ATS to refresh its own attendance records first
+    const r = await fetch(ATS_PROXY + '/mytoday' + (manual ? '?sync=1' : ''), {
       headers: { 'Authorization': 'Bearer ' + ats.token }
     });
     if (r.status === 401) {
@@ -2433,6 +2458,7 @@ async function atsFetchToday(manual) {
       atsStatus('\u23F3 No punch-in recorded yet today (checked ' + now + ').');
       traySyncIcon('', 'last synced ' + now + ', no punch-in yet');
       atsAfterSync(); // still back-fill yesterday's real punch-out
+      if (manual) atsRefreshCountdown();
       return;
     }
     const text = JSON.stringify(j, null, 4);
@@ -2443,6 +2469,7 @@ async function atsFetchToday(manual) {
     atsStatus('\u2714 Synced at ' + now + ' \u2014 syncs on open and at 11 PM.', '#008000');
     traySyncIcon('', 'last synced ' + now);
     atsAfterSync();
+    if (manual) atsRefreshCountdown();
   } catch (e) {
     atsProxyWarn();
   }
@@ -4247,6 +4274,7 @@ $('smLogoff').addEventListener('click', () => {
   closeStart();
   waStop();
   clearTimeout(atsTimer);
+  clearInterval(atsResyncTimer);
   loggedIn = false;
   renderLogin();
   const l = $('loginScreen');

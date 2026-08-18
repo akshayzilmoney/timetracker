@@ -34,14 +34,23 @@ function jwtStaff(token) {
   } catch (e) { return null; }
 }
 
+function atsHeaders(token) {
+  return {
+    'Accept': 'application/json',
+    'Authorization': 'Bearer ' + token,
+    'Cookie': 'jwt_token=' + token
+  };
+}
+
+// Ask the ATS to refresh its attendance records from the punch devices.
+// Responds immediately; the refreshed data lands in my-today ~a minute later.
+function triggerAtsSync(token) {
+  return fetch(API + '/attendance/my-sync-status', { headers: atsHeaders(token) })
+    .catch(() => { });
+}
+
 function fetchMyToday(token) {
-  return fetch(API + '/attendance/my-today', {
-    headers: {
-      'Accept': 'application/json',
-      'Authorization': 'Bearer ' + token,
-      'Cookie': 'jwt_token=' + token
-    }
-  });
+  return fetch(API + '/attendance/my-today', { headers: atsHeaders(token) });
 }
 
 // Fetch my-today with a stored token and save it under snap:<staff>:<day>.
@@ -92,6 +101,10 @@ export default {
     }
 
     if (request.method === 'GET' && url.pathname === '/ats/mytoday') {
+      // ?sync=1 (manual sync): also ask the ATS to refresh from the punch
+      // devices. The refresh lands ~a minute later, so the client shows the
+      // current data now and re-fetches once the refresh is done.
+      if (url.searchParams.get('sync') === '1') await triggerAtsSync(token);
       const r = await fetchMyToday(token);
       return new Response(await r.text(), { status: r.status, headers: cors });
     }
@@ -143,12 +156,18 @@ export default {
     return json({ error: 'not found' }, 404, cors);
   },
 
-  // Cron trigger (23:00 IST): snapshot the day for every registered token
+  // Cron trigger (23:00 IST): snapshot the day for every registered token.
+  // First ask the ATS to refresh everyone's records, give that a minute to
+  // land, then snapshot so the stored punch-outs are the refreshed ones.
   async scheduled(event, env) {
     const list = await env.ATS_KV.list({ prefix: 'tok:' });
+    const users = [];
     for (const k of list.keys) {
       const token = await env.ATS_KV.get(k.name);
-      if (token) await takeSnapshot(env, k.name.slice(4), token);
+      if (token) users.push([k.name.slice(4), token]);
     }
+    await Promise.all(users.map(u => triggerAtsSync(u[1])));
+    await new Promise(res => setTimeout(res, 90000));
+    for (const [staff, token] of users) await takeSnapshot(env, staff, token);
   }
 };
