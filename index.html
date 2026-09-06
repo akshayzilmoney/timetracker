@@ -2362,6 +2362,7 @@ function atsOfflineUi() {
   atsStatus('\u{1F4F4} Offline \u2014 showing cached data.', '#a00');
   traySyncIcon('offline', 'offline, showing cached data');
   skelHide();
+  $('atsSyncNowBtn').disabled = false;
 }
 window.addEventListener('offline', atsOfflineUi);
 window.addEventListener('online', () => {
@@ -2385,6 +2386,7 @@ function atsProxyWarn() {
   atsStatus('\u26A0\uFE0F Sync server unreachable \u2014 will retry on next open.', '#a00');
   traySyncIcon('err', 'sync server unreachable');
   skelHide();
+  $('atsSyncNowBtn').disabled = false;
   if (atsWarned) return;
   atsWarned = true;
   showBalloon('\u26A0\uFE0F ATS Sync: could not reach the sync server. Click the tray icon to retry.');
@@ -2392,6 +2394,7 @@ function atsProxyWarn() {
 
 $('atsSyncNowBtn').addEventListener('click', () => {
   if (!ats || !ats.email || !ats.password) return atsSetup();
+  $('atsSyncNowBtn').disabled = true;
   atsStatus('\u{1F501} Syncing with ATS\u2026');
   traySyncIcon('spin', 'syncing\u2026');
   skelShow();
@@ -2438,10 +2441,12 @@ async function atsLogin(cb) {
       atsStatus('\u2716 ATS login failed \u2014 click Login\u2026 to re-enter.', '#a00');
       traySyncIcon('err', 'login failed');
       skelHide();
+      $('atsSyncNowBtn').disabled = false;
       showError('ATS login failed: ' + (j.error || 'wrong email or password') + '\nClick Login\u2026 in the ATS Sync panel to re-enter your details.');
       if (cb) cb(false);
     } else {
       // 429 rate-limit or server error: silently retry on the next cycle
+      $('atsSyncNowBtn').disabled = false;
       if (cb) cb(false);
     }
   } catch (e) {
@@ -2467,7 +2472,10 @@ async function atsFetchToday(manual) {
       atsSave();
       return atsLogin(ok => { if (ok) atsFetchToday(manual); });
     }
-    if (!r.ok) return;
+    if (!r.ok) {
+      $('atsSyncNowBtn').disabled = false;
+      return;
+    }
     atsWarned = false; // connection is healthy again; re-arm the outage balloon
     const j = await r.json();
     const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -2476,7 +2484,11 @@ async function atsFetchToday(manual) {
       atsStatus('\u23F3 No punch-in recorded yet today (checked ' + now + ').');
       traySyncIcon('', 'last synced ' + now + ', no punch-in yet');
       atsAfterSync(); // still back-fill yesterday's real punch-out
-      if (manual) atsRefreshCountdown();
+      if (manual) {
+        atsRefreshCountdown();
+      } else {
+        $('atsSyncNowBtn').disabled = false;
+      }
       return;
     }
     const text = JSON.stringify(j, null, 4);
@@ -2487,9 +2499,14 @@ async function atsFetchToday(manual) {
     atsStatus('\u2714 Synced at ' + now + ' \u2014 syncs on open and at 11 PM.', '#008000');
     traySyncIcon('', 'last synced ' + now);
     atsAfterSync();
-    if (manual) atsRefreshCountdown();
+    if (manual) {
+      atsRefreshCountdown();
+    } else {
+      $('atsSyncNowBtn').disabled = false;
+    }
   } catch (e) {
     atsProxyWarn();
+    $('atsSyncNowBtn').disabled = false;
   }
 }
 
