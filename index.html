@@ -980,6 +980,19 @@
   .set-actions { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
 
   /* --- Request Leave --- */
+  .notice-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #FFFBCC;
+    border-bottom: 1px solid #E5C365;
+    padding: 6px 10px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .notice-banner .nb-close { cursor: pointer; color: #777; padding: 0 4px; flex: none; }
+  .notice-banner .nb-close:hover { color: #000; }
   #leaveWindow .panel-body { width: 340px; }
   .set-row select, .set-row input[type="date"] { border: 1px solid #7F9DB9; padding: 3px; width: 130px; font-family: Tahoma, sans-serif; font-size: 11px; }
   .leave-dates { display: flex; gap: 10px; }
@@ -1514,6 +1527,11 @@
     </span>
   </div>
   <div class="menu-bar"><span>File</span><span>View</span><span>Help</span></div>
+
+  <div id="leaveBanner" class="notice-banner">
+    <span>&#128231; <b>New!</b> You can now apply for leave directly through O5S &mdash; try the <b>Request Leave</b> icon.</span>
+    <span class="nb-close" id="leaveBannerX" title="Dismiss">&#10005;</span>
+  </div>
 
   <div class="xp-body">
   <p class="subtitle" id="subtitle">Target: 8 working hours. Your ATS punches load automatically.</p>
@@ -5070,6 +5088,7 @@ function finishLogin() {
   startupChime();
   startDesktopLife();
   startAtsSync();
+  showLeaveBanner();
   setTimeout(() => showClippy("It looks like you're trying to track work hours. Would you like help looking busy?"), 1500);
 }
 // Click the dial-up window to skip the handshake
@@ -6583,6 +6602,22 @@ $('lvMailto').addEventListener('click', () => {
     '&subject=' + encodeURIComponent(leaveSubject()) +
     '&body=' + encodeURIComponent($('lvBody').value);
   window.open(url, '_blank');
+});
+function showLeaveBanner() {
+  if (localStorage.getItem('timetracker_leaveBannerSeen')) return;
+  $('leaveBanner').style.display = 'flex';
+}
+function dismissLeaveBanner() {
+  localStorage.setItem('timetracker_leaveBannerSeen', '1');
+  $('leaveBanner').style.display = 'none';
+}
+$('leaveBanner').addEventListener('click', () => {
+  dismissLeaveBanner();
+  openLeaveWindow();
+});
+$('leaveBannerX').addEventListener('click', e => {
+  e.stopPropagation();
+  dismissLeaveBanner();
 });
 $('lvCopy').addEventListener('click', async () => {
   saveLeaveName();
