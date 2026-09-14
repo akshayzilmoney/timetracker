@@ -2340,8 +2340,10 @@ function loadJson(text, focus) {
   $('result').style.display = 'block';
   render();
   clearInterval(timer);
-  // Only tick live when the data is for today
-  if (dateKey(new Date(parsed.sessions_today[0].punch_in)) === dateKey(new Date())) {
+  // Tick live when the data is for today, or when the last session is still
+  // open (a night shift crossing midnight is still the current session).
+  if (dateKey(new Date(parsed.sessions_today[0].punch_in)) === dateKey(new Date()) ||
+    !parsed.sessions_today[parsed.sessions_today.length - 1].punch_out) {
     // While the screensaver runs, skip the per-second DOM work; a once-a-minute
     // render keeps history saving, then wake-up re-renders instantly.
     timer = setInterval(() => {
@@ -5289,14 +5291,19 @@ function loadUserState() {
   applyUserUi();
   clearInterval(timer);
   // Only restore saved punch data if it is actually from today; yesterday's
-  // data is already in history and would otherwise linger on screen.
+  // data is already in history and would otherwise linger on screen. The
+  // exception is a still-open session (no punch_out) - a night shift that
+  // started yesterday and hasn't punched out yet is still the current
+  // session no matter what the calendar date says, so keep it on screen
+  // instead of discarding it as stale on every reopen/reload.
   const saved = lsGet('timetracker_json');
   let savedIsToday = false;
   if (saved) {
     try {
       const p = JSON.parse(saved);
       savedIsToday = Array.isArray(p.sessions_today) && p.sessions_today.length > 0 &&
-        dateKey(new Date(p.sessions_today[0].punch_in)) === dateKey(new Date());
+        (dateKey(new Date(p.sessions_today[0].punch_in)) === dateKey(new Date()) ||
+          !p.sessions_today[p.sessions_today.length - 1].punch_out);
     } catch (e) { }
   }
   if (savedIsToday) {
