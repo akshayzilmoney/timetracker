@@ -2297,6 +2297,13 @@ function loadJson(text, focus) {
   } catch (e) {
     return showError('Invalid JSON: ' + e.message);
   }
+  if (Array.isArray(parsed.sessions_today)) {
+    // A session with a punch_out but no punch_in is the tail end of a shift
+    // that started before midnight (e.g. a night shift): ATS reports it
+    // under today even though the punch-in belongs to yesterday, where it
+    // was already recorded. Drop it instead of rejecting the whole sync.
+    parsed.sessions_today = parsed.sessions_today.filter(s => s.punch_in || !s.punch_out);
+  }
   if (!Array.isArray(parsed.sessions_today) || parsed.sessions_today.length === 0) {
     return showError('JSON must contain a "sessions_today" array with at least one session.');
   }
@@ -2556,6 +2563,113 @@ async function atsLogin(cb) {
   }
 }
 
+// --- Ambiguous morning carryover: a session with a punch_out but no
+// punch_in usually means the tail end of a real overnight shift, but it can
+// also mean the user simply forgot to punch out yesterday and this device
+// event should really count as today's punch-in. Ask once per occurrence
+// and remember the answer so repeat auto-syncs (every 15 min) don't re-ask.
+const CARRYOVER_LOG_KEY = 'timetracker_carryover_resolved';
+let carryoverPromptOpen = false;
+
+function loadCarryoverLog() { return lsGetJSON(CARRYOVER_LOG_KEY, {}); }
+function saveCarryoverLog(log) {
+  const cutoff = Date.now() - 3 * 86400000; // no need to keep these past a few days
+  Object.keys(log).forEach(k => { if (new Date(k).getTime() < cutoff) delete log[k]; });
+  lsSet(CARRYOVER_LOG_KEY, JSON.stringify(log));
+}
+
+// Parse free text like "6:45 PM", "6:45pm" or "18:45" onto the given day.
+function parseClockTimeOnDay(text, dayDate) {
+  const m = /^\s*(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?\s*$/i.exec(text || '');
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = m[2] ? parseInt(m[2], 10) : 0;
+  const ap = m[3] ? m[3][0].toLowerCase() : null;
+  if (ap === 'p' && h < 12) h += 12;
+  if (ap === 'a' && h === 12) h = 0;
+  if (h > 23 || min > 59) return null;
+  const d = new Date(dayDate);
+  d.setHours(h, min, 0, 0);
+  return d;
+}
+
+// Fix yesterday's history with a real end time, replacing whatever estimate
+// is sitting in the last (still-open) session - used both when the user
+// tells us the actual time they stopped (forgot to punch out) and when ATS
+// itself hands us the real punch-out (confirmed night shift), so a night
+// shift employee's worked hours are exact instead of a target-based guess.
+function applyRealPunchOut(rawPunchOutIso, actualEndDate) {
+  const yKey = dateKey(new Date(new Date(rawPunchOutIso).getTime() - 86400000));
+  const rec = history[yKey];
+  if (!rec || !rec.sessions || !rec.sessions.length) return;
+  const sessions = rec.sessions.map(s => s.slice());
+  const last = sessions[sessions.length - 1];
+  if (last[1]) return; // already has a real punch-out, nothing to fix
+  last[1] = actualEndDate.toISOString();
+  let worked = 0;
+  sessions.forEach(s => { worked += Math.max(0, new Date(s[1]) - new Date(s[0])); });
+  saveDayToHistory(yKey, worked, rec.breaks || 0, rec.target || settings.targetMin * 60000, sessions);
+  renderMonth();
+}
+
+function askCarryoverChoice(session) {
+  return new Promise(resolve => {
+    carryoverPromptOpen = true;
+    const when = fmtClock(new Date(session.punch_out));
+    showConfirmLabeled(
+      'Today’s first record is a punch-out at ' + when + ' with no punch-in before it.\n\n' +
+      'Did you forget to punch out yesterday, or is this a night shift that started before midnight?',
+      'I forgot to punch out yesterday',
+      "It's a night shift",
+      () => {
+        showPrompt(
+          'What time did you actually stop working yesterday? (e.g. 6:45 PM)',
+          '',
+          val => {
+            const yesterday = new Date(new Date(session.punch_out).getTime() - 86400000);
+            const actualEnd = parseClockTimeOnDay(val, yesterday);
+            carryoverPromptOpen = false;
+            resolve({ choice: 'forgot', actualEnd: actualEnd ? actualEnd.toISOString() : null });
+          },
+          false,
+          () => { carryoverPromptOpen = false; resolve({ choice: 'forgot', actualEnd: null }); }
+        );
+      },
+      () => { carryoverPromptOpen = false; resolve({ choice: 'shift' }); }
+    );
+  });
+}
+
+// Split today's sessions into the clean ones plus whatever the ambiguous
+// punch_out-only entries resolve to (dropped for a real night shift, or
+// promoted to today's punch_in if the user says they forgot to punch out).
+async function resolveCarryoverSessions(sessions) {
+  const ambiguous = sessions.filter(s => s.punch_out && !s.punch_in);
+  const result = sessions.filter(s => s.punch_in || !s.punch_out);
+  if (!ambiguous.length) return result;
+  const log = loadCarryoverLog();
+  for (const s of ambiguous) {
+    const key = String(s.punch_out);
+    let entry = log[key];
+    if (!entry) {
+      if (carryoverPromptOpen) continue; // one modal at a time; retried next sync
+      entry = await askCarryoverChoice(s);
+      log[key] = entry;
+      saveCarryoverLog(log);
+    }
+    if (entry.choice === 'forgot') {
+      result.push({ punch_in: s.punch_out, punch_out: null });
+      if (entry.actualEnd) applyRealPunchOut(s.punch_out, new Date(entry.actualEnd));
+    } else if (entry.choice === 'shift') {
+      // Confirmed night shift: ATS's own punch-out is the exact end time,
+      // so use it to replace the nightly snapshot's target-based estimate -
+      // this is what gives the night shift employee their real worked hours.
+      applyRealPunchOut(s.punch_out, new Date(s.punch_out));
+    }
+  }
+  return result;
+}
+
 async function atsFetchToday(manual) {
   if (!ats || !ats.email || !ats.password) return;
   if (!navigator.onLine) return atsOfflineUi();
@@ -2580,10 +2694,31 @@ async function atsFetchToday(manual) {
     atsWarned = false; // connection is healthy again; re-arm the outage balloon
     const j = await r.json();
     const now = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    if (Array.isArray(j.sessions_today)) {
+      // A stray punch-out-only entry is ambiguous (real night shift vs. a
+      // forgotten punch-out) - resolveCarryoverSessions asks the user (once
+      // per occurrence) instead of silently guessing, then falls through to
+      // the "no punch-in yet today" branch below if nothing is left.
+      j.sessions_today = await resolveCarryoverSessions(j.sessions_today);
+    }
     if (!Array.isArray(j.sessions_today) || j.sessions_today.length === 0) {
-      clearTodayView(); // don't keep showing a previous day's punches
-      atsStatus('\u23F3 No punch-in recorded yet today (checked ' + now + ').');
-      traySyncIcon('', 'last synced ' + now + ', no punch-in yet');
+      // A night shift employee still working past midnight has no new punch
+      // yet today - their open session stays under ATS's "yesterday" bucket
+      // until they actually punch out, so an empty response here doesn't
+      // necessarily mean "not punched in." If what's already on screen is
+      // still an open (no punch_out) session, leave it showing - and ticking
+      // live - until ATS actually reports the punch-out, not before.
+      const lastShown = data && Array.isArray(data.sessions_today) && data.sessions_today.length &&
+        data.sessions_today[data.sessions_today.length - 1];
+      const stillWorking = lastShown && !lastShown.punch_out;
+      if (stillWorking) {
+        atsStatus('\u2714 Still working (night shift) \u2014 checked ' + now + '.', '#008000');
+        traySyncIcon('', 'still working, checked ' + now);
+      } else {
+        clearTodayView(); // don't keep showing a previous day's punches
+        atsStatus('\u23F3 No punch-in recorded yet today (checked ' + now + ').');
+        traySyncIcon('', 'last synced ' + now + ', no punch-in yet');
+      }
       atsAfterSync(); // still back-fill yesterday's real punch-out
       if (manual) {
         atsRefreshCountdown();
@@ -2811,6 +2946,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 let confirmCallback = null;
+let confirmNoCallback = null;
 let promptCallback = null;
 
 function showError(msg) {
@@ -2827,7 +2963,15 @@ function showError(msg) {
 }
 
 function showConfirm(msg, onYes) {
+  showConfirmLabeled(msg, 'Yes', 'No', onYes, null);
+}
+
+// Same as showConfirm but with custom Yes/No button text and an optional
+// callback when the user picks No (or closes the dialog without choosing -
+// dismissing is treated the same as No).
+function showConfirmLabeled(msg, yesLabel, noLabel, onYes, onNo) {
   confirmCallback = onYes;
+  confirmNoCallback = onNo || null;
   $('msgIcon').textContent = '?';
   $('msgIcon').className = 'msg-icon q';
   $('msgText').textContent = msg;
@@ -2835,6 +2979,8 @@ function showConfirm(msg, onYes) {
   $('msgOk').style.display = 'none';
   $('msgYes').style.display = '';
   $('msgNo').style.display = '';
+  $('msgYes').textContent = yesLabel;
+  $('msgNo').textContent = noLabel;
   $('msgOverlay').style.display = 'flex';
   $('msgNo').focus();
   dingSound();
@@ -2853,8 +2999,9 @@ function showInfo(msg) {
   dingSound();
 }
 
-function showPrompt(msg, def, onOk, masked) {
+function showPrompt(msg, def, onOk, masked, onCancel) {
   promptCallback = onOk;
+  confirmNoCallback = onCancel || null;
   $('msgIcon').textContent = masked ? '\uD83D\uDD12' : 'i';
   $('msgIcon').className = 'msg-icon q';
   $('msgText').textContent = msg;
@@ -2871,9 +3018,18 @@ function showPrompt(msg, def, onOk, masked) {
 
 function hideError() {
   confirmCallback = null;
+  confirmNoCallback = null;
   promptCallback = null;
   $('msgInputWrap').style.display = 'none';
   $('msgOverlay').style.display = 'none';
+}
+// Closing without an explicit choice (X, Escape, or the No button) is
+// treated the same as No / Cancel, so a caller that needs to know (like the
+// carryover-punch prompt) always gets a resolution instead of hanging.
+function dismissModal() {
+  const cb = confirmNoCallback;
+  hideError();
+  if (cb) cb();
 }
 $('msgOk').addEventListener('click', () => {
   const cb = promptCallback;
@@ -2881,8 +3037,8 @@ $('msgOk').addEventListener('click', () => {
   hideError();
   if (cb) cb(val);
 });
-$('msgX').addEventListener('click', hideError);
-$('msgNo').addEventListener('click', hideError);
+$('msgX').addEventListener('click', dismissModal);
+$('msgNo').addEventListener('click', dismissModal);
 $('msgYes').addEventListener('click', () => {
   const cb = confirmCallback;
   hideError();
@@ -2890,7 +3046,7 @@ $('msgYes').addEventListener('click', () => {
 });
 document.addEventListener('keydown', e => {
   if ($('msgOverlay').style.display !== 'flex') return;
-  if (e.key === 'Escape') hideError();
+  if (e.key === 'Escape') dismissModal();
   else if (e.key === 'Enter' && $('msgOk').style.display !== 'none') $('msgOk').click();
 });
 
@@ -2979,9 +3135,14 @@ function render() {
   const targetMs = (data.target_minutes || settings.targetMin) * 60000;
   const sorted = [...data.sessions_today].sort((a, b) => new Date(a.punch_in) - new Date(b.punch_in));
 
-  // If the loaded data is from a previous day, the final punch-out is missing
-  // (it happens when leaving the office). Assume you left when the target was met.
-  const isPastDay = dateKey(new Date(sorted[0].punch_in)) !== dateKey(now);
+  // If the loaded data is from a previous day AND has a real punch-out, treat
+  // it as a closed past day. A session that's still open (no punch_out) stays
+  // "current" no matter what the calendar date says - a night shift crossing
+  // midnight keeps ticking live instead of freezing into an "estimated" end
+  // the moment the clock rolls over. It only shows as done once ATS actually
+  // reports a punch-out.
+  const lastSession = sorted[sorted.length - 1];
+  const isPastDay = !!lastSession.punch_out && dateKey(new Date(sorted[0].punch_in)) !== dateKey(now);
 
   let workedMs = 0;
   let isWorking = false;
