@@ -978,6 +978,15 @@
   .set-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
   .set-row input[type="text"], .set-row input[type="number"] { border: 1px solid #7F9DB9; padding: 3px; width: 130px; }
   .set-actions { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+
+  /* --- Request Leave --- */
+  #leaveWindow .panel-body { width: 340px; }
+  .set-row select, .set-row input[type="date"] { border: 1px solid #7F9DB9; padding: 3px; width: 130px; font-family: Tahoma, sans-serif; font-size: 11px; }
+  .leave-dates { display: flex; gap: 10px; }
+  .leave-dates .set-row { flex: 1; flex-direction: column; align-items: flex-start; gap: 3px; }
+  .leave-dates .set-row input { width: 100%; box-sizing: border-box; }
+  .leave-to { color: #555; margin-bottom: 8px; }
+  #lvBody { height: 130px; }
   .ach-grid { display: grid; grid-template-columns: 1fr; gap: 6px; max-height: 340px; overflow: auto; width: 320px; }
   .badge { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid #7F9DB9; padding: 6px 8px; }
   .badge.locked { filter: grayscale(1); opacity: 0.55; }
@@ -1490,6 +1499,10 @@
     <div class="di-img">&#127949;&#65039;</div>
     <div class="di-label">Road Rash</div>
   </div>
+  <div class="dicon" data-action="leave">
+    <div class="di-img">&#128231;</div>
+    <div class="di-label">Request Leave</div>
+  </div>
 </div>
 
 <div class="xp-window windowed">
@@ -1659,6 +1672,7 @@
   <div class="sm-head"><div class="avatar" id="smAvatar">?</div><span id="smUser">No user</span></div>
   <div class="sm-items">
     <div class="sm-item" id="smHours">&#128202; My Work Hours</div>
+    <div class="sm-item" id="smLeave">&#128231; Request Leave&hellip;</div>
     <div class="sm-item" id="smTrophies">&#127942; Achievements</div>
     <div class="sm-item" id="smScores">&#129351; High Scores</div>
     <div class="sm-item" id="smMine">&#128163; Minesweeper</div>
@@ -2028,6 +2042,33 @@
     </div>
     <div id="abStatus" style="color:#555; margin-bottom:6px"></div>
     <div class="set-actions"><button id="setSave">OK</button><button id="setCancel">Cancel</button></div>
+  </div>
+</div>
+
+<div id="leaveWindow" class="mini-win">
+  <div class="title-bar">
+    <span class="title-text">&#128231; Request Leave</span>
+    <span class="title-buttons"><span class="tbtn close" id="leaveX">&#10005;</span></span>
+  </div>
+  <div class="panel-body">
+    <div class="leave-to">To: <b>hr.india@zilmoney.com</b></div>
+    <div class="set-row"><label for="lvType">Leave type</label>
+      <select id="lvType">
+        <option value="sick">Sick Leave</option>
+        <option value="personal">Personal Emergency Leave</option>
+        <option value="vacation">Planned Vacation</option>
+      </select>
+    </div>
+    <div class="set-row"><label for="lvName">Your name</label><input id="lvName" type="text" maxlength="40"></div>
+    <div class="leave-dates">
+      <div class="set-row"><label for="lvStart">Start date</label><input id="lvStart" type="date"></div>
+      <div class="set-row"><label for="lvEnd">End date</label><input id="lvEnd" type="date"></div>
+    </div>
+    <textarea id="lvBody" spellcheck="false"></textarea>
+    <div class="set-actions">
+      <button id="lvMailto">&#128228; Open in Outlook Web</button>
+      <button id="lvCopy">&#128203; Copy to Clipboard</button>
+    </div>
   </div>
 </div>
 
@@ -3175,6 +3216,8 @@ document.querySelectorAll('.dicon').forEach(icon => {
       virusStart();
     } else if (action === 'roadrash') {
       openRoadRash();
+    } else if (action === 'leave') {
+      openLeaveWindow();
     } else {
       showError(icon.dataset.msg);
     }
@@ -4310,6 +4353,7 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#startMenu') && !e.target.closest('.start-btn')) closeStart();
 });
 $('smHours').addEventListener('click', () => { closeStart(); openDashboard(); });
+$('smLeave').addEventListener('click', () => { closeStart(); openLeaveWindow(); });
 $('smMine').addEventListener('click', () => { closeStart(); openMinesweeper(); });
 $('smRun').addEventListener('click', () => {
   closeStart();
@@ -6476,6 +6520,81 @@ $('setSave').addEventListener('click', () => {
   showBalloon('Settings saved.');
 });
 
+// --- Request Leave ---
+const LEAVE_RECIPIENT = 'hr.india@zilmoney.com';
+const LEAVE_TEMPLATES = {
+  sick: {
+    label: 'Sick Leave',
+    body: 'Dear HR Team,\n\nI am writing to inform you that I am unwell and will be unable to come to work on {DATES}. I will keep you updated on my recovery and return to work as soon as possible. Please let me know if any documentation is required.\n\nThank you for your understanding.\n\n{NAME}'
+  },
+  personal: {
+    label: 'Personal Emergency Leave',
+    body: 'Dear HR Team,\n\nI am writing to request leave due to a personal emergency requiring my immediate attention on {DATES}. I will remain reachable for urgent matters where possible and will follow up on my return.\n\nThank you for your understanding.\n\n{NAME}'
+  },
+  vacation: {
+    label: 'Planned Vacation',
+    body: 'Dear HR Team,\n\nI would like to request planned leave from {DATES}. I will ensure my pending work is handed over before I leave and will be reachable for urgent matters.\n\nKindly let me know if this is approved.\n\n{NAME}'
+  }
+};
+let lvEdited = false; // true once the employee hand-edits the message, so we stop overwriting it
+function fmtLeaveDate(s) {
+  return new Date(s + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+function leaveDatesText() {
+  const s = $('lvStart').value, e = $('lvEnd').value;
+  if (!s) return '[date(s)]';
+  const sf = fmtLeaveDate(s);
+  return (!e || e === s) ? sf : sf + ' to ' + fmtLeaveDate(e);
+}
+function leaveSubject() {
+  const t = LEAVE_TEMPLATES[$('lvType').value];
+  const name = $('lvName').value.trim() || currentUser || 'Employee';
+  return 'Leave Request - ' + t.label + ' - ' + name + ' - ' + leaveDatesText();
+}
+function renderLeaveBody() {
+  const t = LEAVE_TEMPLATES[$('lvType').value];
+  const name = $('lvName').value.trim() || currentUser || '[Your name]';
+  $('lvBody').value = t.body.replace('{DATES}', leaveDatesText()).replace('{NAME}', name);
+}
+function saveLeaveName() {
+  const v = $('lvName').value.trim();
+  if (v) lsSet('timetracker_leave_name', v);
+}
+function openLeaveWindow() {
+  $('lvName').value = lsGet('timetracker_leave_name') || currentUser || '';
+  $('lvType').value = 'sick';
+  const today = dateKey(new Date());
+  $('lvStart').value = today;
+  $('lvEnd').value = today;
+  lvEdited = false;
+  renderLeaveBody();
+  $('leaveWindow').style.display = 'block';
+}
+$('leaveX').addEventListener('click', () => { $('leaveWindow').style.display = 'none'; });
+$('lvType').addEventListener('change', () => { lvEdited = false; renderLeaveBody(); });
+['lvName', 'lvStart', 'lvEnd'].forEach(id =>
+  $(id).addEventListener('input', () => { if (!lvEdited) renderLeaveBody(); }));
+$('lvName').addEventListener('change', saveLeaveName);
+$('lvBody').addEventListener('input', () => { lvEdited = true; });
+$('lvMailto').addEventListener('click', () => {
+  saveLeaveName();
+  // Deep-links into Outlook on the web (not the desktop app) with the fields pre-filled.
+  const url = 'https://outlook.office.com/mail/deeplink/compose?to=' + encodeURIComponent(LEAVE_RECIPIENT) +
+    '&subject=' + encodeURIComponent(leaveSubject()) +
+    '&body=' + encodeURIComponent($('lvBody').value);
+  window.open(url, '_blank');
+});
+$('lvCopy').addEventListener('click', async () => {
+  saveLeaveName();
+  const text = 'To: ' + LEAVE_RECIPIENT + '\nSubject: ' + leaveSubject() + '\n\n' + $('lvBody').value;
+  try {
+    await navigator.clipboard.writeText(text);
+    showBalloon('Leave request copied to clipboard.');
+  } catch (e) {
+    showError('Could not copy automatically — please select and copy the text manually.');
+  }
+});
+
 // --- Winamp (plays chiptunes generated from your CD collection) ---
 let waIv = null;
 function waMelody(name) {
@@ -6939,6 +7058,7 @@ const WIN_REGISTRY = [
   ['msnWindow', '\uD83D\uDCAC Messenger'],
   ['defragWindow', '\uD83D\uDDC4\uFE0F Defrag'],
   ['settingsWindow', '\u2699\uFE0F Control Panel'],
+  ['leaveWindow', '\uD83D\uDCE7 Request Leave'],
   ['achWindow', '\uD83C\uDFC6 Achievements'],
   ['binWindow', '\uD83D\uDDD1\uFE0F Recycle Bin'],
   ['folderWindow', '\uD83D\uDCC1 Explorer'],
