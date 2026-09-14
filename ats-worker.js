@@ -1,7 +1,7 @@
 // ATS Sync proxy - Cloudflare Worker edition.
 // Forwards the HR API calls the tracker needs (with CORS headers for the
 // GitHub Pages site) and keeps nightly snapshots: the tracker registers its
-// 24h token here, and a cron trigger at 23:00 IST fetches everyone's
+// 24h token here, and a cron trigger at 23:50 IST fetches everyone's
 // my-today so the final punch-out of the day is recorded even when no
 // browser tab is open. Snapshots are served back so the site can back-fill
 // history with real punch-outs instead of estimates.
@@ -173,7 +173,7 @@ export default {
     return json({ error: 'not found' }, 404, cors);
   },
 
-  // Cron trigger (23:00 IST): snapshot the day for every registered token.
+  // Cron trigger (23:50 IST): snapshot the day for every registered token.
   // Trigger the ATS-side refresh and wait for it to finish first, so the
   // stored punch-outs are the refreshed ones.
   async scheduled(event, env) {
