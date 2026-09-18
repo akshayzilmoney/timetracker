@@ -2236,6 +2236,18 @@ function saveDayToHistory(dayKey, workedMs, breakMs, targetMs, sessions) {
   lsSet(HISTORY_KEY, JSON.stringify(history));
 }
 
+// Full UI refresh after a history change made outside the normal live-render
+// path (ATS backfills, manual edits): renderMonth() alone only recalculates
+// achievements/XP, it doesn't redraw the calendar grid or an already-open
+// day detail popup, so a background fix can silently update storage while
+// the screen keeps showing stale numbers.
+function refreshHistoryViews(affectedKey) {
+  buildDashboard();
+  renderCalendar();
+  renderMonth();
+  if (affectedKey && dmKey === affectedKey) openDayDetail(affectedKey);
+}
+
 // Absence days (holiday/sick) never count against streaks, averages or targets
 function isAbsence(rec) { return !!(rec && (rec.kind === 'holiday' || rec.kind === 'sick')); }
 function kindLabel(rec) { return rec.kind === 'holiday' ? '\uD83C\uDFD6\uFE0F Holiday' : '\uD83E\uDD12 Sick'; }
@@ -2670,7 +2682,7 @@ async function applyRealPunchOut(rawPunchOutIso, actualEndDate) {
   let worked = 0;
   sessions.forEach(s => { worked += Math.max(0, new Date(s[1]) - new Date(s[0])); });
   saveDayToHistory(yKey, worked, rec.breaks || 0, rec.target || settings.targetMin * 60000, sessions);
-  renderMonth();
+  refreshHistoryViews(yKey);
 }
 
 function askCarryoverChoice(session) {
@@ -2854,6 +2866,7 @@ async function atsFetchSnapshots() {
     const snaps = await r.json();
     const todayK = dateKey(new Date());
     let changed = false;
+    let lastChangedKey = null;
     const snapOpenLog = loadSnapOpenLog();
     let snapOpenLogDirty = false;
     for (const day in snaps) {
@@ -2915,11 +2928,12 @@ async function atsFetchSnapshots() {
         JSON.stringify(prev.sessions || null) !== JSON.stringify(sess)) {
         saveDayToHistory(day, worked, breaks, prev && prev.target ? prev.target : targetMs, sess);
         changed = true;
+        lastChangedKey = day;
       }
     }
     if (snapOpenLogDirty) saveSnapOpenLog(snapOpenLog);
     if (changed) {
-      renderMonth();
+      refreshHistoryViews(lastChangedKey);
       showBalloon('\u{1F4C5} History updated with recorded punch-outs from ATS.');
     }
   } catch (e) { /* snapshots are best-effort */ }
