@@ -2595,19 +2595,65 @@ function parseClockTimeOnDay(text, dayDate) {
   return d;
 }
 
+// The Worker's 23:50 IST cron snapshots sessions_today while a night session
+// is still open, so it still carries the real punch_in - the same session's
+// punch_in gets dropped once ATS's own "today" response rolls into the next
+// calendar day. Prefer that recorded time over asking the user.
+async function findSnapshotPunchIn(day, beforeIso) {
+  try {
+    const r = await atsAuthedFetch('/snapshots');
+    if (!r.ok) return null;
+    const snaps = await r.json();
+    const j = snaps[day];
+    if (!j || !Array.isArray(j.sessions_today) || !j.sessions_today.length) return null;
+    const last = [...j.sessions_today].sort((a, b) => new Date(a.punch_in) - new Date(b.punch_in)).pop();
+    return last && last.punch_in && new Date(last.punch_in) < new Date(beforeIso) ? last.punch_in : null;
+  } catch (e) { return null; }
+}
+
 // Fix yesterday's history with a real end time, replacing whatever estimate
 // is sitting in the last (still-open) session - used both when the user
 // tells us the actual time they stopped (forgot to punch out) and when ATS
 // itself hands us the real punch-out (confirmed night shift), so a night
 // shift employee's worked hours are exact instead of a target-based guess.
-function applyRealPunchOut(rawPunchOutIso, actualEndDate) {
+async function applyRealPunchOut(rawPunchOutIso, actualEndDate) {
   const yKey = dateKey(new Date(new Date(rawPunchOutIso).getTime() - 86400000));
   const rec = history[yKey];
   if (!rec || !rec.sessions || !rec.sessions.length) return;
   const sessions = rec.sessions.map(s => s.slice());
   const last = sessions[sessions.length - 1];
-  if (last[1]) return; // already has a real punch-out, nothing to fix
-  last[1] = actualEndDate.toISOString();
+  if (last[1]) {
+    if (new Date(last[1]) >= actualEndDate) return; // already accurate, nothing to fix
+    // The last stored session for that day is already closed earlier than
+    // this real punch-out - it's a later session the browser never saw at
+    // all (no tab open when it started), not a wrong end time on an
+    // existing one. Stretching the existing session to the real punch-out
+    // would wrongly count the gap in between as worked time, so find when
+    // the new session actually started instead of guessing.
+    let startDate = null;
+    const snapPunchIn = await findSnapshotPunchIn(yKey, actualEndDate.toISOString());
+    if (snapPunchIn) {
+      const d = new Date(snapPunchIn);
+      if (d > new Date(last[1]) && d < actualEndDate) startDate = d;
+    }
+    if (!startDate) {
+      // No usable snapshot (cron missed that night, or it expired) - ask.
+      if (carryoverPromptOpen) return; // one modal at a time; retried next sync
+      carryoverPromptOpen = true;
+      const startVal = await new Promise(resolve => showPrompt(
+        'ATS also recorded a punch-out at ' + fmtClock(actualEndDate) +
+        ' with no matching session in your local history.\n\n' +
+        'What time did you start working again that evening? (e.g. 10:00 PM)',
+        '', v => resolve(v), false, () => resolve(null)));
+      carryoverPromptOpen = false;
+      startDate = startVal && parseClockTimeOnDay(startVal, new Date(sessions[0][0]));
+      if (!startDate || startDate <= new Date(last[1]) || startDate >= actualEndDate) return;
+    }
+    rec.breaks = (rec.breaks || 0) + Math.max(0, startDate - new Date(last[1]));
+    sessions.push([startDate.toISOString(), actualEndDate.toISOString()]);
+  } else {
+    last[1] = actualEndDate.toISOString();
+  }
   let worked = 0;
   sessions.forEach(s => { worked += Math.max(0, new Date(s[1]) - new Date(s[0])); });
   saveDayToHistory(yKey, worked, rec.breaks || 0, rec.target || settings.targetMin * 60000, sessions);
@@ -2661,12 +2707,12 @@ async function resolveCarryoverSessions(sessions) {
     }
     if (entry.choice === 'forgot') {
       result.push({ punch_in: s.punch_out, punch_out: null });
-      if (entry.actualEnd) applyRealPunchOut(s.punch_out, new Date(entry.actualEnd));
+      if (entry.actualEnd) await applyRealPunchOut(s.punch_out, new Date(entry.actualEnd));
     } else if (entry.choice === 'shift') {
       // Confirmed night shift: ATS's own punch-out is the exact end time,
       // so use it to replace the nightly snapshot's target-based estimate -
       // this is what gives the night shift employee their real worked hours.
-      applyRealPunchOut(s.punch_out, new Date(s.punch_out));
+      await applyRealPunchOut(s.punch_out, new Date(s.punch_out));
     }
   }
   return result;
