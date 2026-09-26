@@ -6,6 +6,7 @@ compatibility_date = "2026-08-01"
 binding = "ATS_KV"
 id = "a7f8ef463eca4f5cbd64476389474940"
 
-# 18:20 UTC = 23:50 IST - nightly snapshot of everyone's final punch-out
+# 16:30 UTC = 22:00 IST and 18:20 UTC = 23:50 IST - nightly snapshots of
+# everyone's punch state; the later one overwrites, the earlier is a fallback
 [triggers]
-crons = ["20 18 * * *"]
+crons = ["30 16 * * *", "20 18 * * *"]

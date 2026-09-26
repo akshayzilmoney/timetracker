@@ -173,7 +173,7 @@ export default {
     return json({ error: 'not found' }, 404, cors);
   },
 
-  // Cron trigger (23:50 IST): snapshot the day for every registered token.
+  // Cron triggers (22:00 and 23:50 IST; the later snapshot overwrites): snapshot the day for every registered token.
   // Trigger the ATS-side refresh and wait for it to finish first, so the
   // stored punch-outs are the refreshed ones.
   async scheduled(event, env) {
