@@ -1520,6 +1520,22 @@
   #dashboard .page .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   #dashboard .page .detail-actions .btn { flex: 1; min-width: 0; padding: 0 12px; }
   #dashboard .page .btn.sm.icon { width: 40px; padding: 0; }
+  #dashboard .page .sess { display: flex; flex-direction: column; gap: 10px; }
+  #dashboard .page .sess-list { display: flex; flex-direction: column; gap: 8px; }
+  #dashboard .page .sess-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+  #dashboard .page .sess-row input[type=time] {
+    width: 100%; min-width: 0; height: 36px; padding: 0 8px; font: inherit; font-family: var(--mono); font-size: 13px;
+    background: var(--control); color: var(--text); border: 1px solid var(--border-2); border-radius: var(--r-sm); color-scheme: dark; outline: none;
+  }
+  #dashboard .page .sess-row input[type=time]:focus { border-color: var(--border-hover); }
+  #dashboard .page .sess-dash { color: var(--faint); }
+  #dashboard .page .sess-dur { font-family: var(--mono); font-size: 12px; color: var(--muted); min-width: 52px; text-align: right; white-space: nowrap; }
+  #dashboard .page .sess-next { display: block; font-size: 10px; color: var(--faint); }
+  #dashboard .page .sess-del { width: 28px; height: 28px; padding: 0; background: transparent; border: 0; color: var(--muted); border-radius: 8px; cursor: pointer; }
+  #dashboard .page .sess-del:hover { color: var(--under); background: var(--raised); }
+  #dashboard .page .sess-note { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.45; }
+  #dashboard .page .sess-msg { min-height: 16px; font-size: 12px; color: var(--under); }
+  #dashboard .page .sess-ro { font-family: var(--mono); font-size: 13px; color: var(--text-2); }
   #dashboard .page .lab-short { display: none; }
   @media (max-width: 760px) {
     #dashboard .page .lab-full { display: none; }
@@ -1973,10 +1989,14 @@
           <div class="mini"><div class="mini-label">Week total</div><div class="mini-value" id="whWeek">&ndash;</div></div>
           <div class="mini"><div class="mini-label">Month to date</div><div class="mini-value" id="whMonth">&ndash;</div></div>
         </div>
+        <div class="sess">
+          <div class="eyebrow">Punch sessions</div>
+          <div id="whSessions"></div>
+        </div>
         <div class="stat-sub" id="whNote" style="font-size:13px"></div>
         <div class="detail-actions">
-          <button class="btn sm" id="whDetail">Sessions &amp; notes</button>
-          <button class="btn sm" id="whEdit">Add / edit day</button>
+          <button class="btn sm" id="whDetail">Notes &amp; details</button>
+          <button class="btn sm" id="whEdit">Whole-day edit</button>
         </div>
       </div>
       <div class="card week">
@@ -7463,7 +7483,56 @@ function renderWhDetail() {
   const pfx = whSel.slice(0, 7);
   Object.keys(E).forEach(k => { if (k.startsWith(pfx) && k <= whSel && !E[k].kind) mtd += E[k].worked; });
   $('whMonth').textContent = whFmt(mtd);
+  renderWhSessions();
 }
+// Inline per-session editor for the selected day (past days only: today is tracked live from ATS)
+let whOrig = [];
+function whRowHtml(origIdx, sess) {
+  const a = sess ? new Date(sess[0]) : null;
+  const b = sess && sess[1] ? new Date(sess[1]) : null;
+  const next = a && b && dateKey(b) !== dateKey(a) ? '<span class="sess-next">+1 day</span>' : '';
+  return '<div class="sess-row" data-orig="' + (sess ? origIdx : '') + '">' +
+    '<input type="time" class="ds-in" aria-label="Punch in" value="' + (a ? hhmm(a) : '') + '">' +
+    '<span class="sess-dash">\u2192</span>' +
+    '<input type="time" class="ds-out" aria-label="Punch out" value="' + (b ? hhmm(b) : '') + '">' +
+    '<span class="sess-dur">' + (a && b ? fmtDurShort(b - a) : '') + next + '</span>' +
+    '<button class="sess-del ds-del" aria-label="Remove session" title="Remove session">&#10005;</button></div>';
+}
+function renderWhSessions() {
+  const box = $('whSessions');
+  const k = whSel, rec = history[k];
+  const todayKey = dateKey(new Date());
+  if (k > todayKey) { box.innerHTML = '<p class="sess-note">This day hasn\u2019t happened yet.</p>'; return; }
+  if (rec && isAbsence(rec)) {
+    box.innerHTML = '<p class="sess-note">Marked as ' + (rec.kind === 'holiday' ? 'holiday' : 'sick day') +
+      '. Use \u201CWhole-day edit\u201D to change that.</p>';
+    return;
+  }
+  if (k === todayKey) {
+    const ss = (rec && rec.sessions) || [];
+    box.innerHTML = (ss.length ? '<div class="sess-list">' + ss.map(x => {
+      return '<div class="sess-ro">' + fmtClock(new Date(x[0])) + ' \u2192 ' + (x[1] ? fmtClock(new Date(x[1])) : 'now') + '</div>';
+    }).join('') + '</div>' : '') +
+      '<p class="sess-note">Today is tracked live from ATS, so it can\u2019t be edited until the day is over. ' +
+      'Missed a punch yesterday?</p><button class="btn sm" id="whYest">Edit yesterday</button>';
+    return;
+  }
+  whOrig = ((rec && rec.sessions) || []).map(x => x.slice());
+  box.innerHTML = (whOrig.length ? '' : '<p class="sess-note">No punches recorded for this day. Add the sessions you worked.</p>') +
+    '<div class="sess-list">' + whOrig.map((x, i) => whRowHtml(i, x)).join('') + '</div>' +
+    '<div class="detail-actions"><button class="btn sm ds-add">+ Add session</button>' +
+    '<button class="btn sm ds-save">Save sessions</button></div><div class="sess-msg" id="whSessMsg"></div>';
+}
+dsWire($('whSessions'), () => ({ k: whSel, orig: whOrig, msg: $('whSessMsg'), row: whRowHtml }));
+$('whSessions').addEventListener('click', e => {
+  if (e.target.id !== 'whYest') return;
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  whSel = dateKey(y);
+  calMonth = new Date(y.getFullYear(), y.getMonth(), 1);
+  renderCalendar();
+  renderWhDetail();
+});
 $('whDetail').addEventListener('click', () => {
   if (history[whSel]) openDayDetail(whSel);
   else openDayEditor(whSel);
@@ -7569,9 +7638,9 @@ function openDayDetail(k) {
       '<p class="db-empty" style="padding:8px 0">No punch-in/out detail was recorded for this day.</p>') +
       '<table><thead><tr><th>#</th><th>Punch In</th><th>Punch Out</th><th>Duration</th><th></th></tr></thead><tbody>' +
       dsOrig.map((s, i) => dsRowHtml(i, s)).join('') + '</tbody></table>' +
-      '<div class="ds-actions"><button class="dash-btn" id="dsAdd">+ Add session</button>' +
-      '<button class="dash-btn" id="dsSave">Save sessions</button></div><div class="ds-msg" id="dsMsg"></div>';
-    dsRenumber();
+      '<div class="ds-actions"><button class="dash-btn ds-add">+ Add session</button>' +
+      '<button class="dash-btn ds-save">Save sessions</button></div><div class="ds-msg" id="dsMsg"></div>';
+    dsRenumber($('dmSessions'));
   } else if (rec.sessions && rec.sessions.length) {
     $('dmSessions').innerHTML =
       '<table><thead><tr><th>#</th><th>Punch In</th><th>Punch Out</th><th>Duration</th></tr></thead><tbody>' +
@@ -7605,23 +7674,22 @@ function dsRowHtml(origIdx, s) {
     '<td>' + (a && b ? fmtDurShort(b - a) : '—') + '</td>' +
     '<td><button class="ds-del" title="Remove session">&#10005;</button></td></tr>';
 }
-function dsRenumber() {
-  $('dmSessions').querySelectorAll('tbody tr').forEach((tr, i) => { tr.firstElementChild.textContent = i + 1; });
+function dsRenumber(root) {
+  root.querySelectorAll('tbody tr').forEach((tr, i) => { tr.firstElementChild.textContent = i + 1; });
 }
-function dsSave() {
-  const k = dmKey, rec = k && history[k];
-  if (!rec) return;
-  const msg = t => { $('dsMsg').textContent = t; };
+// Save the session rows found in root as day k. orig = the sessions the rows were built from.
+function dsSave(k, root, msgEl, orig) {
+  const msg = t => { msgEl.textContent = t; };
   const y = +k.slice(0, 4), mo = +k.slice(5, 7) - 1, d = +k.slice(8);
   const atTime = v => new Date(y, mo, d, +v.slice(0, 2), +v.slice(3, 5), 0, 0);
   const out = [];
-  for (const tr of $('dmSessions').querySelectorAll('tbody tr')) {
+  for (const tr of root.querySelectorAll('[data-orig]')) {
     const inV = tr.querySelector('.ds-in').value, outV = tr.querySelector('.ds-out').value;
     if (!inV || !outV) return msg('Every session needs both a punch-in and a punch-out time.');
-    const orig = tr.dataset.orig !== '' ? dsOrig[+tr.dataset.orig] : null;
-    const a = orig && hhmm(new Date(orig[0])) === inV ? orig[0] : atTime(inV).toISOString();
+    const o = tr.dataset.orig !== '' ? orig[+tr.dataset.orig] : null;
+    const a = o && hhmm(new Date(o[0])) === inV ? o[0] : atTime(inV).toISOString();
     let b;
-    if (orig && orig[1] && hhmm(new Date(orig[1])) === outV) b = orig[1];
+    if (o && o[1] && hhmm(new Date(o[1])) === outV) b = o[1];
     else {
       const bd = atTime(outV);
       if (bd <= new Date(a)) bd.setDate(bd.getDate() + 1); // stopped after midnight
@@ -7640,26 +7708,36 @@ function dsSave() {
       breaks += gap;
     }
   }
+  let rec = history[k];
+  if (!rec) {
+    if (!out.length) return msg('Add at least one session first.');
+    rec = history[k] = { worked: 0, breaks: 0, target: settings.targetMin * 60000 };
+  }
   rec.sessions = out;
   rec.worked = worked;
   rec.breaks = breaks;
   rec.sessionsEdited = true;
   lsSet(HISTORY_KEY, JSON.stringify(history));
   refreshHistoryViews(k);
-  showBalloon('✅ Sessions saved for ' + k + '.');
+  showBalloon('\u2705 Sessions saved for ' + k + '.');
 }
-$('dmSessions').addEventListener('click', e => {
-  const del = e.target.closest('.ds-del');
-  if (del) {
-    del.closest('tr').remove();
-    dsRenumber();
-  } else if (e.target.id === 'dsAdd') {
-    $('dmSessions').querySelector('tbody').insertAdjacentHTML('beforeend', dsRowHtml(0, null));
-    dsRenumber();
-  } else if (e.target.id === 'dsSave') {
-    dsSave();
-  }
-});
+// ctx() -> { k, orig, msg, row } for whichever editor root was clicked
+function dsWire(root, ctx) {
+  root.addEventListener('click', e => {
+    const del = e.target.closest('.ds-del');
+    if (del) {
+      del.closest('[data-orig]').remove();
+      dsRenumber(root);
+    } else if (e.target.closest('.ds-add')) {
+      root.querySelector('tbody, .sess-list').insertAdjacentHTML('beforeend', ctx().row(0, null));
+      dsRenumber(root);
+    } else if (e.target.closest('.ds-save')) {
+      const c = ctx();
+      dsSave(c.k, root, c.msg, c.orig);
+    }
+  });
+}
+dsWire($('dmSessions'), () => ({ k: dmKey, orig: dsOrig, msg: $('dsMsg'), row: dsRowHtml }));
 
 function closeDayDetail() {
   dmKey = null;
