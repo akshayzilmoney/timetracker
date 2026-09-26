@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#245EDC">
 <link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <title>O5S</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1280,99 +1283,12 @@
     display: none;
     position: fixed; inset: 0;
     z-index: 1400;
-    background: #0f172a;
-    color: #e2e8f0;
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    font-size: 14px;
     overflow-y: auto;
     animation: dashIn .2s ease-out;
   }
   @keyframes dashIn { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
-  .dash-head {
-    position: sticky; top: 0;
-    display: flex; align-items: center; gap: 16px;
-    padding: 14px 24px;
-    background: rgba(15,23,42,0.92);
-    backdrop-filter: blur(6px);
-    border-bottom: 1px solid #1e293b;
-    z-index: 2;
-  }
-  .dash-head h1 { font-size: 18px; font-weight: 600; flex: 1; margin: 0; }
-  #dashBack {
-    min-width: 0;
-    border: 1px solid #334155;
-    background: #1e293b;
-    color: #e2e8f0;
-    border-radius: 8px;
-    padding: 7px 14px;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  #dashBack:hover { background: #334155; box-shadow: none; }
-  #dashBack:active { background: #0f172a; }
-  #dashSearch {
-    border: 1px solid #334155;
-    background: #1e293b;
-    color: #e2e8f0;
-    border-radius: 8px;
-    padding: 7px 12px;
-    font-size: 13px;
-    width: 220px;
-    outline: none;
-  }
-  #dashSearch::placeholder { color: #64748b; }
-  #dashSearch:focus { border-color: #38bdf8; }
-  .dash-body { max-width: 1000px; margin: 0 auto; padding: 20px 24px 60px; }
-  .dash-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-  .dash-card {
-    background: #1e293b;
-    border: 1px solid #293548;
-    border-radius: 12px;
-    padding: 14px 16px;
-  }
-  .dash-card .dc-label { color: #94a3b8; font-size: 12px; margin-bottom: 6px; }
-  .dash-card .dc-value { font-size: 20px; font-weight: 600; }
-  .dash-card .dc-sub { color: #64748b; font-size: 11px; margin-top: 3px; }
-  .dash-panel {
-    background: #1e293b;
-    border: 1px solid #293548;
-    border-radius: 12px;
-    padding: 16px 18px;
-    margin-bottom: 20px;
-  }
-  .dash-panel h2 { font-size: 13px; font-weight: 600; color: #94a3b8; margin: 0 0 14px; text-transform: uppercase; letter-spacing: .05em; }
-  .dash-bars { display: flex; align-items: flex-end; gap: 8px; height: 180px; }
-  .db-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; min-width: 0; }
-  .db-val { font-size: 11px; color: #94a3b8; }
-  .db-bar { width: 100%; max-width: 38px; background: linear-gradient(180deg, #38bdf8, #0284c7); border-radius: 6px 6px 2px 2px; }
-  .db-col.now .db-bar { background: linear-gradient(180deg, #34d399, #059669); }
-  .db-lab { font-size: 11px; color: #64748b; }
-  .dash-heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px); gap: 3px; overflow-x: auto; padding-bottom: 4px; }
-  .dash-heat i, .heat-legend i { width: 12px; height: 12px; border-radius: 3px; background: #293548; display: inline-block; flex: none; }
-  .hl1 { background: #14532d !important; }
-  .hl2 { background: #15803d !important; }
-  .hl3 { background: #22c55e !important; }
-  .hl4 { background: #86efac !important; }
-  .heat-legend { display: flex; align-items: center; gap: 5px; margin-top: 10px; color: #64748b; font-size: 11px; }
-  #dashTable h3 { font-size: 13px; font-weight: 600; margin: 18px 0 8px; color: #e2e8f0; }
-  #dashTable h3 span { color: #64748b; font-weight: 400; }
-  #dashTable table { width: 100%; border-collapse: collapse; background: transparent; border: none; }
-  #dashTable th {
-    background: none; border: none; border-bottom: 1px solid #293548;
-    color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
-    padding: 6px 8px; text-align: left;
-  }
-  #dashTable td { border: none; border-bottom: 1px solid #22304a; padding: 7px 8px; font-size: 13px; }
-  #dashTable tr:hover td { background: #223049; }
   #dashboard .pos { color: #34d399; }
   #dashboard .neg { color: #f87171; }
-  #dashTable .db-note { color: #94a3b8; font-style: italic; }
-  #dashTable .db-today td:first-child { color: #38bdf8; font-weight: 600; }
   .db-empty { color: #64748b; text-align: center; padding: 30px 0; }
 
   /* --- dashboard calendar (monthly day-focused view) --- */
@@ -1388,37 +1304,6 @@
   }
   .dash-btn:hover { background: #334155; box-shadow: none; }
   .dash-btn:active { background: #0f172a; }
-  .dash-cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px; }
-  .dash-cal-head h2 { margin: 0; }
-  .dash-cal-nav { display: flex; gap: 6px; }
-  .dash-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-  .cal-dow { text-align: center; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding-bottom: 2px; }
-  .cal-cell {
-    background: #16213b;
-    border: 1px solid #293548;
-    border-radius: 8px;
-    min-height: 62px;
-    padding: 6px 8px;
-    overflow: hidden;
-  }
-  .cal-cell.empty { background: transparent; border-color: transparent; }
-  .cal-cell:not(.empty) { cursor: pointer; }
-  .cal-cell:not(.empty):hover { border-color: #38bdf8; }
-  .cal-cell.ok { background: rgba(34,197,94,0.08); border-color: #1d4a2c; }
-  .cal-cell.short { background: rgba(248,113,113,0.07); border-color: #5b2320; }
-  .cal-cell.today { outline: 2px solid #38bdf8; outline-offset: -1px; }
-  .cal-cell .cd-num { color: #94a3b8; font-size: 11px; }
-  .cal-cell .cd-hours { font-size: 13px; font-weight: 600; margin-top: 3px; }
-  .cal-cell .cd-note {
-    font-size: 10px; color: #64748b;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    margin-top: 2px;
-  }
-
-  /* --- absence (holiday/sick) day styling --- */
-  .hlA { background: #0ea5e9 !important; }
-  .cal-cell.off { background: rgba(56,189,248,0.10); border-color: #155e75; }
-
   /* --- per-day detail + day editor modals --- */
   #dayModal, #editModal {
     display: none;
@@ -1489,20 +1374,156 @@
     outline: none;
   }
   #dmNote:focus { border-color: #38bdf8; }
-  #dashTable tbody tr { cursor: pointer; }
-  .dash-heat i { cursor: pointer; }
   @media (max-width: 640px) {
     .dm-stats { grid-template-columns: 1fr 1fr; }
-    .cal-cell { min-height: 48px; padding: 4px 5px; }
-    .cal-cell .cd-hours { font-size: 11px; }
-    .cal-cell .cd-note { display: none; }
   }
-  @media (max-width: 640px) {
-    .dash-head { padding: 10px 12px; flex-wrap: wrap; gap: 10px; }
-    #dashSearch { width: 100%; order: 3; }
-    .dash-body { padding: 14px 12px 40px; }
-    .dash-bars { height: 130px; }
-    .db-val { display: none; }
+
+  /* --- Work History page (design tokens live on #dashboard) --- */
+  #dashboard {
+    --bg:#0A0E15;
+    --surface:#10151F;
+    --raised:#151B27;
+    --control:#121824;
+    --border:#1D2533;
+    --border-2:#222A38;
+    --border-hover:#3A4558;
+    --text:#E8ECF3;
+    --text-2:#A3ACBD;
+    --muted:#7C8698;
+    --faint:#5E6879;
+    --ghost:#4A5466;
+    --on:#4FD1A1;
+    --under:#F2A65A;
+    --neutral-bar:#3A4A63;
+    --r-sm:10px;
+    --r-md:12px;
+    --r-lg:16px;
+    --r-xl:20px;
+    --mono:'Geist Mono',ui-monospace,monospace;
+    --sans:'Geist',system-ui,-apple-system,sans-serif;
+    background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  #dashboard .page button {font:inherit;color:inherit}
+  #dashboard .page .mono {font-family:var(--mono)}
+  #dashboard .page {max-width:1440px;margin:0 auto;padding:40px 64px 64px;display:flex;flex-direction:column;gap:32px}
+  #dashboard .page .header {display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+  #dashboard .page .header-left {display:flex;align-items:center;gap:16px}
+  #dashboard .page .eyebrow {font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  #dashboard .page h1 {margin:0;font-size:26px;font-weight:600;letter-spacing:-.02em}
+  #dashboard .page .header-right {display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  #dashboard .page .btn {height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;background:var(--control);border:1px solid var(--border-2);border-radius:var(--r-md);font-size:14px;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s}
+  #dashboard .page .btn:hover {background:#1B2231;border-color:var(--border-hover)}
+  #dashboard .page .btn:focus-visible, #dashboard .page .day:focus-visible, #dashboard .page .search input:focus-visible {outline:2px solid var(--on);outline-offset:2px}
+  #dashboard .page .btn.icon {width:44px;padding:0;color:var(--text-2)}
+  #dashboard .page .btn.sm {height:40px;border-radius:var(--r-sm);background:var(--raised)}
+  #dashboard .page .search {display:flex;align-items:center;gap:10px;width:300px;height:44px;padding:0 14px;background:var(--control);border:1px solid var(--border-2);border-radius:var(--r-md);color:var(--muted)}
+  #dashboard .page .search:focus-within {border-color:var(--border-hover)}
+  #dashboard .page .search input {flex:1;min-width:0;background:transparent;border:0;outline:none;color:var(--text);font:inherit;font-size:14px}
+  #dashboard .page .stats {display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+  #dashboard .page .stat {padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);display:flex;flex-direction:column;gap:10px}
+  #dashboard .page .stat-label {font-size:13px;color:var(--text-2)}
+  #dashboard .page .stat-value {font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.02em}
+  #dashboard .page .stat-sub {font-size:12px;color:var(--muted)}
+  #dashboard .page .main {display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px}
+  #dashboard .page .card {background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:24px}
+  #dashboard .page .cal {display:flex;flex-direction:column;gap:20px}
+  #dashboard .page .cal-head {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  #dashboard .page .cal-title {display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  #dashboard .page h2 {margin:0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+  #dashboard .page .cal-meta {font-family:var(--mono);font-size:13px;color:var(--muted)}
+  #dashboard .page .cal-nav {display:flex;gap:8px}
+  #dashboard .page .grid7 {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+  #dashboard .page .dow {font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--muted);padding-left:12px}
+  #dashboard .page .dow.we {color:var(--faint)}
+  #dashboard .page .day {height:92px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;text-align:left;background:#0D121B;border:1px solid #1A212D;border-radius:var(--r-md);cursor:pointer;transition:border-color .15s,transform .15s}
+  #dashboard .page .day:hover {border-color:var(--border-hover)}
+  #dashboard .page .day.future {background:transparent;border-color:#161D29}
+  #dashboard .page .day.future .num {color:var(--ghost)}
+  #dashboard .page .day.selected {border-color:var(--text);box-shadow:0 0 0 .5px var(--text)}
+  #dashboard .page .day.dim {opacity:.25}
+  #dashboard .page .day-top {display:flex;align-items:center;justify-content:space-between}
+  #dashboard .page .num {font-size:13px;font-weight:500;color:var(--text-2)}
+  #dashboard .page .today-tag {font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--bg);background:var(--text);border-radius:6px;padding:2px 6px}
+  #dashboard .page .hours {font-family:var(--mono);font-size:16px;font-weight:600;color:var(--faint)}
+  #dashboard .page .track {display:block;height:3px;border-radius:3px;background:var(--border);overflow:hidden}
+  #dashboard .page .fill {display:block;height:100%;border-radius:3px}
+  #dashboard .page .legend {display:flex;gap:24px;flex-wrap:wrap;font-size:12px;color:var(--text-2)}
+  #dashboard .page .legend span {display:inline-flex;align-items:center;gap:8px}
+  #dashboard .page .sw {width:10px;height:10px;border-radius:3px}
+  #dashboard .page .side {display:flex;flex-direction:column;gap:16px}
+  #dashboard .page .detail {display:flex;flex-direction:column;gap:20px}
+  #dashboard .page .detail-title {font-size:18px;font-weight:600;margin-top:4px}
+  #dashboard .page .ring-row {display:flex;align-items:center;gap:20px}
+  #dashboard .page .ring {position:relative;width:120px;height:120px;flex-shrink:0}
+  #dashboard .page .ring svg {transform:rotate(-90deg)}
+  #dashboard .page .ring circle {transition:stroke-dasharray .4s ease}
+  #dashboard .page .ring-center {position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  #dashboard .page .ring-pct {font-family:var(--mono);font-size:20px;font-weight:600}
+  #dashboard .page .ring-sub {font-size:11px;color:var(--muted)}
+  #dashboard .page .worked {font-family:var(--mono);font-size:30px;font-weight:600;letter-spacing:-.02em}
+  #dashboard .page .worked-sub {font-size:13px;color:var(--text-2)}
+  #dashboard .page .badge {align-self:flex-start;margin-top:4px;padding:4px 10px;border-radius:999px;font-family:var(--mono);font-size:12px;font-weight:500;background:var(--raised);color:var(--faint)}
+  #dashboard .page .minis {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  #dashboard .page .mini {padding:14px;background:var(--raised);border-radius:var(--r-md);display:flex;flex-direction:column;gap:4px}
+  #dashboard .page .mini-label {font-size:12px;color:var(--muted)}
+  #dashboard .page .mini-value {font-family:var(--mono);font-size:16px;font-weight:600}
+  #dashboard .page .week {flex:1;display:flex;flex-direction:column;gap:16px}
+  #dashboard .page .week-rows {display:flex;flex-direction:column;gap:10px}
+  #dashboard .page .wrow {display:grid;grid-template-columns:36px minmax(0,1fr) 64px;align-items:center;gap:12px}
+  #dashboard .page .wname {font-size:13px;color:var(--muted)}
+  #dashboard .page .wname.cur {color:var(--text);font-weight:600}
+  #dashboard .page .wtrack {height:8px;background:var(--raised);border-radius:4px;overflow:hidden}
+  #dashboard .page .wtrack .fill {border-radius:4px;transition:width .3s ease}
+  #dashboard .page .wval {font-family:var(--mono);font-size:13px;text-align:right}
+  #dashboard .page .chart {display:flex;flex-direction:column;gap:20px}
+  #dashboard .page .chart-head {display:flex;align-items:baseline;justify-content:space-between}
+  #dashboard .page .chart-head h2 {font-size:16px}
+  #dashboard .page .plot {position:relative;height:200px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:end;border-bottom:1px solid var(--border-2);padding-left:44px}
+  #dashboard .page .gl {position:absolute;left:0;right:0;height:1px;background:#161D29}
+  #dashboard .page .gl-label {position:absolute;left:0;font-family:var(--mono);font-size:11px;color:var(--faint);transform:translateY(-50%)}
+  #dashboard .page .col {height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;position:relative;z-index:1}
+  #dashboard .page .bar {display:block;width:100%;max-width:44px;border-radius:6px 6px 2px 2px;transition:height .4s ease}
+  #dashboard .page .bar-val {font-family:var(--mono);font-size:12px;color:var(--text-2)}
+  #dashboard .page .xlabels {display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;padding-left:44px}
+  #dashboard .page .xlabels div {text-align:center;font-size:12px;color:var(--muted)}
+  #dashboard .page .xlabels .cur, #dashboard .page .bar-val.cur {color:var(--text);font-weight:600}
+  @media (max-width:1180px) {
+    #dashboard .page .stats {grid-template-columns:repeat(3,minmax(0,1fr))}
+    #dashboard .page .main {grid-template-columns:1fr}
+    #dashboard .page .side {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media (max-width:760px) {
+    #dashboard .page {padding:24px 16px 40px;gap:24px}
+    #dashboard .page .search {width:100%}
+    #dashboard .page .header-right {width:100%}
+    #dashboard .page .header-right .search {flex:1}
+    #dashboard .page .stats {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    #dashboard .page .stat {padding:16px}
+    #dashboard .page .stat-value {font-size:20px}
+    #dashboard .page .side {display:flex}
+    #dashboard .page .card {padding:16px}
+    #dashboard .page .grid7 {gap:4px}
+    #dashboard .page .dow {padding-left:0;text-align:center;font-size:11px}
+    #dashboard .page .day {height:64px;padding:6px;border-radius:8px}
+    #dashboard .page .hours {font-size:11px}
+    #dashboard .page .today-tag {display:none}
+    #dashboard .page .plot, #dashboard .page .xlabels {gap:6px;padding-left:36px}
+    #dashboard .page .bar-val {font-size:10px}
+    #dashboard .page .xlabels div {font-size:10px}
+  }
+  @media (prefers-reduced-motion:reduce) {
+    #dashboard .page * {transition:none !important}
+  }
+  /* keep the app's global XP button styling off the new page */
+  #dashboard .page button { min-width: 0; box-shadow: none; }
+  #dashboard .page .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  #dashboard .page .detail-actions .btn { flex: 1; min-width: 0; padding: 0 12px; }
+  #dashboard .page .btn.sm.icon { width: 40px; padding: 0; }
+  #dashboard .page .lab-short { display: none; }
+  @media (max-width: 760px) {
+    #dashboard .page .lab-full { display: none; }
+    #dashboard .page .lab-short { display: inline; }
   }
 
   /* --- mobile / touch --- */
@@ -1874,42 +1895,103 @@
 </div>
 
 <div id="dashboard">
-  <div class="dash-head">
-    <button id="dashBack">&#8592; Back</button>
-    <h1>Work History</h1>
-    <input id="dashSearch" placeholder="Search date or note&hellip;">
-  </div>
-  <div class="dash-body">
-    <div class="dash-cards" id="dashCards"></div>
-    <div class="dash-panel">
-      <div class="dash-cal-head">
-        <h2 id="calTitle">Calendar</h2>
-        <div class="dash-cal-nav">
-          <button class="dash-btn" id="calPrev" title="Previous month">&#8249;</button>
-          <button class="dash-btn" id="calToday">Today</button>
-          <button class="dash-btn" id="calNext" title="Next month">&#8250;</button>
-          <button class="dash-btn" id="calExport" title="Download this month as a spreadsheet (opens in Excel)">&#11015; Excel</button>
+<div class="page">
+
+  <header class="header">
+    <div class="header-left">
+      <button class="btn icon" id="dashBack" aria-label="Back to tracker">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div>
+        <div class="eyebrow">Time tracker</div>
+        <h1>Work History</h1>
+      </div>
+    </div>
+    <div class="header-right">
+      <label class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="dashSearch" type="search" placeholder="Search a date, month or note" aria-label="Search a date, month or note">
+      </label>
+      <button class="btn" id="calExport" title="Downloads the month shown in the calendar (opens in Excel)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+        Export to Excel
+      </button>
+    </div>
+  </header>
+
+  <section class="stats" aria-label="Summary">
+    <div class="stat"><div class="stat-label">Total tracked</div><div class="stat-value" id="whTotal">&ndash;</div><div class="stat-sub" id="whTotalSub">&ndash;</div></div>
+    <div class="stat"><div class="stat-label">Average / day</div><div class="stat-value" id="whAvg">&ndash;</div><div class="stat-sub" id="whAvgSub">&ndash;</div></div>
+    <div class="stat"><div class="stat-label">Net balance</div><div class="stat-value" id="whNet">&ndash;</div><div class="stat-sub" id="whNetSub">&ndash;</div></div>
+    <div class="stat"><div class="stat-label">Best day</div><div class="stat-value" id="whBest">&ndash;</div><div class="stat-sub" id="whBestSub">&ndash;</div></div>
+    <div class="stat"><div class="stat-label">Current streak</div><div class="stat-value" id="whStreak">&ndash;</div><div class="stat-sub">Weekdays on target</div></div>
+    <div class="stat"><div class="stat-label">Break time</div><div class="stat-value" id="whBreak">&ndash;</div><div class="stat-sub">All recorded days</div></div>
+  </section>
+
+  <div class="main">
+    <section class="card cal" aria-label="Calendar">
+      <div class="cal-head">
+        <div class="cal-title"><h2 id="calTitle">&ndash;</h2><div class="cal-meta" id="whMonthMeta"></div></div>
+        <div class="cal-nav">
+          <button class="btn sm icon" id="calPrev" aria-label="Previous month"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+          <button class="btn sm" id="calToday">Today</button>
+          <button class="btn sm icon" id="calNext" aria-label="Next month"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
         </div>
       </div>
-      <div class="dash-cal-grid" id="calGrid"></div>
-    </div>
-    <div class="dash-panel">
-      <h2>Hours per month &#8212; last 12 months</h2>
-      <div class="dash-bars" id="dashBars"></div>
-    </div>
-    <div class="dash-panel">
-      <h2>Daily activity &#8212; last 12 months</h2>
-      <div class="dash-heat" id="dashHeat"></div>
-      <div class="heat-legend">Less <i></i><i class="hl1"></i><i class="hl2"></i><i class="hl3"></i><i class="hl4"></i> More</div>
-    </div>
-    <div class="dash-panel">
-      <div class="dash-cal-head">
-        <h2>All days</h2>
-        <button class="dash-btn" id="dashAddDay">+ Add / Edit Day</button>
+      <div class="grid7">
+        <div class="dow">MON</div><div class="dow">TUE</div><div class="dow">WED</div><div class="dow">THU</div><div class="dow">FRI</div><div class="dow we">SAT</div><div class="dow we">SUN</div>
       </div>
-      <div id="dashTable"></div>
-    </div>
+      <div class="grid7" id="calGrid" role="grid"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--on)"></i><span id="whLegendOn">On target</span></span>
+        <span><i class="sw" style="background:var(--under)"></i>Under target</span>
+        <span><i class="sw" style="border:1px solid var(--border-hover)"></i>No entry</span>
+      </div>
+    </section>
+
+    <aside class="side" aria-label="Selected day">
+      <div class="card detail">
+        <div>
+          <div class="eyebrow">Selected day</div>
+          <div class="detail-title" id="whTitle">&ndash;</div>
+        </div>
+        <div class="ring-row">
+          <div class="ring">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" stroke-width="10"/>
+              <circle id="whArc" cx="60" cy="60" r="52" fill="none" stroke="var(--on)" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 327"/>
+            </svg>
+            <div class="ring-center"><div class="ring-pct" id="whPct">0%</div><div class="ring-sub">of target</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+            <div class="worked" id="whWorked">0h 00m</div>
+            <div class="worked-sub" id="whSub">worked</div>
+            <div class="badge" id="whBadge">No entry</div>
+          </div>
+        </div>
+        <div class="minis">
+          <div class="mini"><div class="mini-label">Week total</div><div class="mini-value" id="whWeek">&ndash;</div></div>
+          <div class="mini"><div class="mini-label">Month to date</div><div class="mini-value" id="whMonth">&ndash;</div></div>
+        </div>
+        <div class="stat-sub" id="whNote" style="font-size:13px"></div>
+        <div class="detail-actions">
+          <button class="btn sm" id="whDetail">Sessions &amp; notes</button>
+          <button class="btn sm" id="whEdit">Add / edit day</button>
+        </div>
+      </div>
+      <div class="card week">
+        <div class="eyebrow">That week</div>
+        <div class="week-rows" id="whWeekRows"></div>
+      </div>
+    </aside>
   </div>
+
+  <section class="card chart" aria-label="Hours per month">
+    <div class="chart-head"><h2>Hours per month</h2><div class="stat-sub" style="font-size:13px">Last 12 months</div></div>
+    <div class="plot" id="whPlot"></div>
+    <div class="xlabels" id="whXLabels"></div>
+  </section>
+</div>
 
   <div id="dayModal">
     <div class="day-card">
@@ -7161,12 +7243,19 @@ function fmtDur(ms) {
   return h + 'h ' + String(m).padStart(2, '0') + 'm ' + String(s).padStart(2, '0') + 's';
 }
 
-// --- History dashboard (modern fullscreen view) ---
+// --- Work History (modern fullscreen view) ---
+let calMonth = new Date();   // month shown in the calendar
+let whSel = dateKey(new Date()); // selected day, YYYY-MM-DD
+let whQuery = '';
+const WH_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
 function openDashboard() {
   calMonth = new Date();
+  whSel = dateKey(new Date());
+  whQuery = '';
+  $('dashSearch').value = '';
   buildDashboard();
   renderCalendar();
-  $('dashSearch').value = '';
   $('dashboard').style.display = 'block';
   $('dashboard').scrollTop = 0;
   document.body.style.overflow = 'hidden';
@@ -7176,47 +7265,126 @@ function closeDashboard() {
   document.body.style.overflow = '';
 }
 $('dashBack').addEventListener('click', closeDashboard);
-$('dashSearch').addEventListener('input', () =>
-  buildDashTable($('dashSearch').value.trim().toLowerCase()));
 
-// --- Dashboard calendar (monthly day-focused view) ---
-let calMonth = new Date();
-function renderCalendar() {
-  const y = calMonth.getFullYear(), mo = calMonth.getMonth();
-  $('calTitle').textContent = calMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  const defT = settings.targetMin * 60000;
-  const lead = (new Date(y, mo, 1).getDay() + 6) % 7; // days before the 1st (Monday-start)
-  const dim = new Date(y, mo + 1, 0).getDate();
-  const todayKey = dateKey(new Date());
-  let html = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    .map(d => '<div class="cal-dow">' + d + '</div>').join('');
-  for (let i = 0; i < lead; i++) html += '<div class="cal-cell empty"></div>';
-  for (let d = 1; d <= dim; d++) {
-    const k = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-    const rec = history[k];
-    let cls = 'cal-cell', body = '';
-    if (rec && isAbsence(rec)) {
-      cls += ' has off';
-      body = '<div class="cd-hours">' + kindLabel(rec) + '</div>' +
-        (rec.note ? '<div class="cd-note">' + esc(rec.note) + '</div>' : '');
-    } else if (rec) {
-      const ok = rec.worked >= (rec.target || defT) - 60000;
-      cls += ' has ' + (ok ? 'ok' : 'short');
-      body = '<div class="cd-hours ' + (ok ? 'pos' : 'neg') + '">' + fmtDurShort(rec.worked) + '</div>' +
-        (rec.note ? '<div class="cd-note">' + esc(rec.note) + '</div>' : '');
+// The page works in minutes with a per-day target; the app stores ms.
+// Holiday/sick days carry no worked time and stay out of every total.
+function getEntries() {
+  const E = {};
+  Object.keys(history).forEach(k => {
+    const r = history[k];
+    const target = (r.target || settings.targetMin * 60000) / 60000;
+    if (isAbsence(r)) E[k] = { worked: 0, break: 0, target, kind: r.kind, note: r.note || '' };
+    else E[k] = { worked: r.worked / 60000, break: (r.breaks || 0) / 60000, target, note: r.note || '' };
+  });
+  return E;
+}
+const whMins = m => Math.round(Math.abs(m));
+const whFmt = m => Math.floor(whMins(m) / 60) + 'h ' + String(whMins(m) % 60).padStart(2, '0') + 'm';
+const whOn = e => e.worked >= e.target - 1; // one minute of slack, as before
+const whColor = e => !e || e.kind ? 'var(--faint)' : (whOn(e) ? 'var(--on)' : 'var(--under)');
+const whTint = (e, a) => !e || e.kind ? null : (whOn(e) ? 'rgba(79,209,161,' + a + ')' : 'rgba(242,166,90,' + a + ')');
+const whKind = e => e.kind === 'holiday' ? 'Holiday' : 'Sick';
+const whTargetMin = () => settings.targetMin;
+
+function whMatches(k, e) {
+  const q = whQuery.trim().toLowerCase();
+  if (!q) return true;
+  const d = new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8));
+  const hay = [k, d.toDateString(), d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+    WH_MONTHS[d.getMonth()], e && e.note ? e.note : ''].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+// --- Dashboard entry point: stats, selected day, 12-month chart ---
+function buildDashboard() {
+  renderWhStats();
+  renderWhDetail();
+  renderWhChart();
+}
+
+function renderWhStats() {
+  const E = getEntries();
+  const keys = Object.keys(E).sort();
+  const work = keys.filter(k => !E[k].kind);
+  const off = keys.length - work.length;
+  let total = 0, net = 0, brk = 0, best = null;
+  work.forEach(k => {
+    total += E[k].worked;
+    net += E[k].worked - E[k].target;
+    brk += E[k].break;
+    if (!best || E[k].worked > E[best].worked) best = k;
+  });
+  // weekdays on target, back from today; days off don't break it and neither does a not-yet-logged today
+  let streak = 0, guard = 0;
+  const sd = new Date();
+  while (guard++ < 1000) {
+    if (sd.getDay() !== 0 && sd.getDay() !== 6) {
+      const e = E[dateKey(sd)];
+      if (e && e.kind) { /* day off */ }
+      else if (!e && guard === 1) { /* today not logged yet */ }
+      else if (!e || !whOn(e)) break;
+      else streak++;
     }
-    if (k === todayKey) cls += ' today';
-    const tip = rec ? '' : ' title="Click to add hours or mark holiday / sick"';
-    html += '<div class="' + cls + '" data-k="' + k + '"' + tip + '><div class="cd-num">' + d + '</div>' + body + '</div>';
+    sd.setDate(sd.getDate() - 1);
+  }
+  $('whTotal').textContent = work.length ? whFmt(total) : '0h 00m';
+  $('whTotalSub').textContent = work.length + ' worked day' + (work.length === 1 ? '' : 's') + (off ? ' · ' + off + ' off' : '');
+  $('whAvg').textContent = work.length ? whFmt(total / work.length) : '–';
+  $('whAvgSub').textContent = 'Target ' + whFmt(whTargetMin());
+  $('whNet').textContent = (net >= 0 ? '+' : '−') + whFmt(net);
+  $('whNet').style.color = net >= 0 ? 'var(--on)' : 'var(--under)';
+  $('whNetSub').textContent = net >= 0 ? 'Ahead of target' : 'Behind target';
+  $('whBest').textContent = best ? whFmt(E[best].worked) : '–';
+  $('whBestSub').textContent = best
+    ? new Date(+best.slice(0, 4), +best.slice(5, 7) - 1, +best.slice(8))
+      .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+    : 'No data yet';
+  $('whStreak').textContent = streak + ' day' + (streak === 1 ? '' : 's');
+  $('whBreak').textContent = whFmt(brk);
+  $('whLegendOn').textContent = 'On target (' + whFmt(whTargetMin()) + '+)';
+}
+
+// --- Calendar ---
+function renderCalendar() {
+  const E = getEntries();
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  const offset = (new Date(y, m, 1).getDay() + 6) % 7; // Monday-first
+  const daysIn = new Date(y, m + 1, 0).getDate();
+  const cells = Math.ceil((offset + daysIn) / 7) * 7;
+  const todayKey = dateKey(new Date());
+  let html = '', monthTotal = 0, monthDays = 0;
+  for (let i = 0; i < cells; i++) {
+    const n = i - offset + 1;
+    if (n < 1 || n > daysIn) { html += '<div></div>'; continue; }
+    const k = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(n).padStart(2, '0');
+    const e = E[k];
+    const future = k > todayKey;
+    const off = e && e.kind;
+    if (e && !off) { monthTotal += e.worked; monthDays++; }
+    let cls = 'day' + (future ? ' future' : '') + (k === whSel ? ' selected' : '');
+    if (whQuery && !whMatches(k, e)) cls += ' dim';
+    let style = '';
+    if (e && !off && !future) {
+      style = 'background:' + whTint(e, 0.06) + ';' + (k === whSel ? '' : 'border-color:' + whTint(e, 0.22) + ';');
+    } else if (off) {
+      style = 'background:rgba(94,168,255,0.06);' + (k === whSel ? '' : 'border-color:rgba(94,168,255,0.22);');
+    }
+    const label = e ? (off ? '<span class="lab-full">' + whKind(e) + '</span><span class="lab-short">Off</span>' : whFmt(e.worked)) : (future ? '' : '—');
+    const pct = e && !off ? Math.min(e.worked / e.target, 1) * 100 : 0;
+    html += '<button class="' + cls + '" data-k="' + k + '" style="' + style + '" aria-pressed="' + (k === whSel) + '"' +
+      ' aria-label="' + k + (e ? ', ' + (off ? whKind(e) : whFmt(e.worked)) : ', no entry') + '">' +
+      '<div class="day-top"><span class="num">' + n + '</span>' + (k === todayKey ? '<span class="today-tag">TODAY</span>' : '') + '</div>' +
+      '<span class="hours" style="color:' + (off ? 'var(--text-2)' : whColor(e)) + '">' + label + '</span>' +
+      '<span class="track"><span class="fill" style="width:' + pct + '%;background:' + whColor(e) + '"></span></span></button>';
   }
   $('calGrid').innerHTML = html;
-  // Recorded days open the detail view; empty days open the editor so a
-  // holiday or sick day is two clicks away
-  $('calGrid').querySelectorAll('.cal-cell:not(.empty)').forEach(c =>
-    c.addEventListener('click', () => {
-      if (history[c.dataset.k]) openDayDetail(c.dataset.k);
-      else openDayEditor(c.dataset.k);
-    }));
+  $('calTitle').textContent = WH_MONTHS[m] + ' ' + y;
+  $('whMonthMeta').textContent = whFmt(monthTotal) + ' · ' + monthDays + ' day' + (monthDays === 1 ? '' : 's');
+  $('calGrid').querySelectorAll('.day').forEach(b => b.addEventListener('click', () => {
+    whSel = b.dataset.k;
+    renderCalendar();
+    renderWhDetail();
+  }));
 }
 $('calPrev').addEventListener('click', () => {
   calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
@@ -7226,6 +7394,112 @@ $('calNext').addEventListener('click', () => {
   calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
   renderCalendar();
 });
+$('calToday').addEventListener('click', () => {
+  calMonth = new Date();
+  whSel = dateKey(new Date());
+  renderCalendar();
+  renderWhDetail();
+});
+$('dashSearch').addEventListener('input', e => {
+  whQuery = e.target.value;
+  const q = whQuery.trim().toLowerCase();
+  const mi = q.length >= 3 ? WH_MONTHS.findIndex(n => n.toLowerCase().startsWith(q)) : -1;
+  const iso = q.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
+  if (iso) {
+    calMonth = new Date(+iso[1], +iso[2] - 1, 1);
+    if (iso[3]) { whSel = iso[0]; renderWhDetail(); }
+  } else if (mi >= 0) {
+    calMonth = new Date(calMonth.getFullYear(), mi, 1);
+  }
+  renderCalendar();
+});
+
+// --- Selected day + its week ---
+function renderWhDetail() {
+  const E = getEntries();
+  const e = E[whSel];
+  const off = e && e.kind;
+  const sel = new Date(+whSel.slice(0, 4), +whSel.slice(5, 7) - 1, +whSel.slice(8));
+  const target = e ? e.target : whTargetMin();
+  const mins = e && !off ? e.worked : null;
+  const C = 2 * Math.PI * 52;
+  const frac = mins != null ? Math.min(mins / target, 1) : 0;
+  $('whTitle').textContent = sel.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  $('whWorked').textContent = whFmt(mins || 0);
+  $('whSub').textContent = off ? whKind(e) : 'worked · target ' + whFmt(target);
+  $('whPct').textContent = Math.round(mins ? mins / target * 100 : 0) + '%';
+  const arc = $('whArc');
+  arc.setAttribute('stroke-dasharray', (frac * C).toFixed(1) + ' ' + C.toFixed(1));
+  arc.setAttribute('stroke', mins == null ? 'var(--faint)' : whColor(e));
+  const badge = $('whBadge');
+  if (off) { badge.textContent = whKind(e); badge.style.color = 'var(--text-2)'; badge.style.background = 'rgba(94,168,255,0.12)'; }
+  else if (mins == null) { badge.textContent = 'No entry'; badge.style.color = 'var(--faint)'; badge.style.background = 'var(--raised)'; }
+  else {
+    const diff = mins - target;
+    badge.textContent = diff >= 0 ? '+' + whFmt(diff) + ' over' : '−' + whFmt(diff) + ' short';
+    badge.style.color = whColor(e);
+    badge.style.background = whTint(e, 0.12);
+  }
+  $('whNote').textContent = e && e.note ? '“' + e.note + '”' : '';
+
+  const monday = new Date(sel);
+  monday.setDate(sel.getDate() - ((sel.getDay() + 6) % 7));
+  let rows = '', wTotal = 0;
+  ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((n, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dk = dateKey(d);
+    const we = E[dk];
+    const wOff = we && we.kind;
+    const v = we && !wOff ? we.worked : null;
+    if (v) wTotal += v;
+    rows += '<div class="wrow"><span class="wname' + (dk === whSel ? ' cur' : '') + '">' + n + '</span>' +
+      '<span class="wtrack"><span class="fill" style="width:' + (v ? Math.min(v / 720, 1) * 100 : 0) + '%;background:' + whColor(we) + '"></span></span>' +
+      '<span class="wval" style="color:' + (v == null ? 'var(--faint)' : 'var(--text)') + '">' + (wOff ? whKind(we) : v == null ? '—' : whFmt(v)) + '</span></div>';
+  });
+  $('whWeekRows').innerHTML = rows;
+  $('whWeek').textContent = whFmt(wTotal);
+  let mtd = 0;
+  const pfx = whSel.slice(0, 7);
+  Object.keys(E).forEach(k => { if (k.startsWith(pfx) && k <= whSel && !E[k].kind) mtd += E[k].worked; });
+  $('whMonth').textContent = whFmt(mtd);
+}
+$('whDetail').addEventListener('click', () => {
+  if (history[whSel]) openDayDetail(whSel);
+  else openDayEditor(whSel);
+});
+$('whEdit').addEventListener('click', () => openDayEditor(whSel));
+
+// --- Hours per month, last 12 months ---
+function renderWhChart() {
+  const E = getEntries();
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const pfx = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    let total = 0;
+    Object.keys(E).forEach(k => { if (k.startsWith(pfx) && !E[k].kind) total += E[k].worked; });
+    months.push({ y: d.getFullYear(), m: d.getMonth(), total });
+  }
+  const maxH = Math.max(160, Math.ceil(Math.max.apply(null, months.map(x => x.total / 60)) / 40) * 40);
+  let plot = '', xl = '';
+  [1, 0.5].forEach(f => {
+    const top = (1 - f) * 100;
+    plot += '<div class="gl" style="top:' + top + '%"></div><div class="gl-label" style="top:' + top + '%">' + Math.round(maxH * f) + 'h</div>';
+  });
+  months.forEach((mo, i) => {
+    const cur = i === 11;
+    const h = mo.total ? Math.max(mo.total / 60 / maxH * 100, 2) : 1;
+    plot += '<div class="col"><span class="bar-val' + (cur ? ' cur' : '') + '">' + (mo.total ? Math.round(mo.total / 60) + 'h' : '') + '</span>' +
+      '<span class="bar" style="height:' + h + '%;background:' + (mo.total ? (cur ? 'var(--on)' : 'var(--neutral-bar)') : 'var(--border)') +
+      '" title="' + WH_MONTHS[mo.m] + ' ' + mo.y + ': ' + whFmt(mo.total) + '"></span></div>';
+    xl += '<div class="' + (cur ? 'cur' : '') + '">' + WH_MONTHS[mo.m].slice(0, 3) + '</div>';
+  });
+  $('whPlot').innerHTML = plot;
+  $('whXLabels').innerHTML = xl;
+}
+
 // Download the month on screen as a CSV (opens straight in Excel)
 function csvCell(v) {
   v = v == null ? '' : String(v);
@@ -7267,10 +7541,6 @@ $('calExport').addEventListener('click', () => {
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-});
-$('calToday').addEventListener('click', () => {
-  calMonth = new Date();
-  renderCalendar();
 });
 
 // --- Per-day detail modal ---
@@ -7403,19 +7673,13 @@ $('dmNoteSave').addEventListener('click', () => {
   if (val) history[dmKey].note = val;
   else delete history[dmKey].note;
   lsSet(HISTORY_KEY, JSON.stringify(history));
+  buildDashboard();
   renderCalendar();
-  buildDashTable($('dashSearch').value.trim().toLowerCase());
   renderMonth();
   const b = $('dmNoteSave');
   b.textContent = 'Saved \u2713';
   setTimeout(() => { b.textContent = 'Save'; }, 1200);
 });
-// Heatmap squares open the day too (event delegation)
-$('dashHeat').addEventListener('click', e => {
-  const k = e.target.dataset && e.target.dataset.k;
-  if (k && history[k]) openDayDetail(k);
-});
-
 // --- Manual day editor (add or fix any day, mark holidays/sick days) ---
 function openDayEditor(k) {
   const rec = k && history[k];
@@ -7442,7 +7706,6 @@ $('emKind').addEventListener('change', emKindChange);
 $('emDate').addEventListener('change', emHintUpdate);
 $('emClose').addEventListener('click', () => { $('editModal').style.display = 'none'; });
 $('editModal').addEventListener('click', e => { if (e.target === $('editModal')) $('editModal').style.display = 'none'; });
-$('dashAddDay').addEventListener('click', () => openDayEditor(null));
 $('dmEdit').addEventListener('click', () => {
   const k = dmKey;
   closeDayDetail();
@@ -7470,147 +7733,6 @@ $('emSave').addEventListener('click', () => {
   renderCalendar();
   renderMonth();
 });
-
-function buildDashboard() {
-  const defT = settings.targetMin * 60000;
-  const keys = Object.keys(history).sort();
-
-  // --- summary cards ---
-  let total = 0, net = 0, totalBreaks = 0, bestMs = 0, bestKey = null, offDays = 0;
-  keys.forEach(k => {
-    const d = history[k];
-    if (isAbsence(d)) { offDays++; return; }
-    total += d.worked;
-    net += d.worked - (d.target || defT);
-    totalBreaks += d.breaks || 0;
-    if (d.worked > bestMs) { bestMs = d.worked; bestKey = k; }
-  });
-  const workedDays = keys.length - offDays;
-  // current streak of weekdays on target (days off don't break it)
-  let streak = 0, guard = 0;
-  const sd = new Date();
-  while (guard++ < 1000) {
-    if (sd.getDay() !== 0 && sd.getDay() !== 6) {
-      const rec = history[dateKey(sd)];
-      if (rec && isAbsence(rec)) { /* skip */ }
-      else if (!rec || rec.worked < (rec.target || defT) - 60000) break;
-      else streak++;
-    }
-    sd.setDate(sd.getDate() - 1);
-  }
-  const cards = [
-    ['Total tracked', workedDays ? fmtDurShort(total) : '0h', workedDays + ' worked day' + (workedDays === 1 ? '' : 's') + (offDays ? ' \u00B7 ' + offDays + ' off' : '')],
-    ['Average / day', workedDays ? fmtDurShort(total / workedDays) : '\u2014', 'target ' + fmtDurShort(defT)],
-    ['Net balance', (net >= 0 ? '+' : '') + fmtDurShort(net), net >= 0 ? 'ahead of target' : 'behind target', net >= 0 ? 'pos' : 'neg'],
-    ['Best day', bestKey ? fmtDurShort(bestMs) : '\u2014', bestKey || 'no data yet'],
-    ['Current streak', streak + ' day' + (streak === 1 ? '' : 's'), 'weekdays on target'],
-    ['Break time', fmtDurShort(totalBreaks), 'all recorded days']
-  ];
-  $('dashCards').innerHTML = cards.map(c =>
-    '<div class="dash-card"><div class="dc-label">' + c[0] + '</div>' +
-    '<div class="dc-value' + (c[3] ? ' ' + c[3] : '') + '">' + esc(c[1]) + '</div>' +
-    '<div class="dc-sub">' + esc(c[2]) + '</div></div>').join('');
-
-  // --- 12-month bar chart ---
-  const now = new Date();
-  const months = [];
-  for (let i = 11; i >= 0; i--) {
-    const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const pfx = m.getFullYear() + '-' + String(m.getMonth() + 1).padStart(2, '0');
-    const tot = keys.filter(k => k.startsWith(pfx)).reduce((s, k) => s + history[k].worked, 0);
-    months.push([m.toLocaleDateString(undefined, { month: 'short' }), tot, i === 0]);
-  }
-  const mx = Math.max(...months.map(m => m[1]), 1);
-  $('dashBars').innerHTML = months.map(([lab, tot, isNow]) =>
-    '<div class="db-col' + (isNow ? ' now' : '') + '" title="' + lab + ': ' + fmtDurShort(tot) + '">' +
-    '<div class="db-val">' + (tot ? Math.round(tot / 3600000) + 'h' : '') + '</div>' +
-    '<div class="db-bar" style="height:' + Math.max(2, tot / mx * 140) + 'px"></div>' +
-    '<div class="db-lab">' + lab + '</div></div>').join('');
-
-  // --- daily activity heatmap (last ~52 weeks, columns = weeks, rows = Mon-Sun) ---
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(start.getDate() - 364);
-  while ((start.getDay() + 6) % 7 !== 0) start.setDate(start.getDate() - 1); // back to Monday
-  let cells = '';
-  const cur = new Date(start);
-  while (cur <= end) {
-    const k = dateKey(cur);
-    const rec = history[k];
-    let cls = '';
-    if (rec) {
-      if (isAbsence(rec)) {
-        cls = 'hlA';
-      } else {
-        const r = rec.worked / (rec.target || defT);
-        cls = 'hl' + (r >= 1 ? 4 : r >= 0.75 ? 3 : r >= 0.5 ? 2 : 1);
-      }
-    }
-    cells += '<i' + (cls ? ' class="' + cls + '"' : '') + ' data-k="' + k + '" title="' + k +
-      (rec ? ' \u2014 ' + (isAbsence(rec) ? kindLabel(rec) : fmtDurShort(rec.worked)) : '') + '"></i>';
-    cur.setDate(cur.getDate() + 1);
-  }
-  $('dashHeat').innerHTML = cells;
-  $('dashHeat').scrollLeft = $('dashHeat').scrollWidth;
-
-  buildDashTable('');
-}
-
-function buildDashTable(filter) {
-  const defT = settings.targetMin * 60000;
-  const todayKey = dateKey(new Date());
-  const keys = Object.keys(history).sort().reverse().filter(k => {
-    if (!filter) return true;
-    const note = (history[k].note || '').toLowerCase();
-    return k.includes(filter) || note.includes(filter);
-  });
-  if (!keys.length) {
-    $('dashTable').innerHTML = '<p class="db-empty">' +
-      (filter ? 'Nothing matches "' + esc(filter) + '".' : 'No days recorded yet \u2014 load some punch data first.') + '</p>';
-    return;
-  }
-  const groups = {};
-  keys.forEach(k => {
-    const g = k.slice(0, 7);
-    (groups[g] = groups[g] || []).push(k);
-  });
-  let html = '';
-  Object.keys(groups).sort().reverse().forEach(g => {
-    const ks = groups[g];
-    const wk = ks.filter(k => !isAbsence(history[k]));
-    const tot = wk.reduce((s, k) => s + history[k].worked, 0);
-    const gnet = wk.reduce((s, k) => s + history[k].worked - (history[k].target || defT), 0);
-    const title = new Date(+g.slice(0, 4), +g.slice(5, 7) - 1, 1)
-      .toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-    html += '<h3>' + title + ' <span>&#8212; ' + fmtDurShort(tot) + ' \u00B7 ' +
-      (gnet >= 0 ? '+' : '') + fmtDurShort(gnet) + '</span></h3>';
-    html += '<table><thead><tr><th>Date</th><th>Worked</th><th>Breaks</th><th>Net</th><th>Note</th></tr></thead><tbody>';
-    ks.forEach(k => {
-      const d = history[k];
-      const dt = new Date(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8));
-      const label = dt.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' });
-      if (isAbsence(d)) {
-        html += '<tr' + (k === todayKey ? ' class="db-today"' : '') + ' data-k="' + k + '" title="Click for day details">' +
-          '<td>' + label + '</td>' +
-          '<td colspan="2">' + kindLabel(d) + '</td>' +
-          '<td class="db-note">\u2014</td>' +
-          '<td class="db-note">' + (d.note ? esc(d.note) : '') + '</td></tr>';
-        return;
-      }
-      const net = d.worked - (d.target || defT);
-      html += '<tr' + (k === todayKey ? ' class="db-today"' : '') + ' data-k="' + k + '" title="Click for day details">' +
-        '<td>' + label + '</td>' +
-        '<td>' + fmtDurShort(d.worked) + '</td>' +
-        '<td>' + fmtDurShort(d.breaks || 0) + '</td>' +
-        '<td class="' + (net >= 0 ? 'pos' : 'neg') + '">' + (net >= 0 ? '+' : '') + fmtDurShort(net) + '</td>' +
-        '<td class="db-note">' + (d.note ? esc(d.note) : '') + '</td></tr>';
-    });
-    html += '</tbody></table>';
-  });
-  $('dashTable').innerHTML = html;
-  $('dashTable').querySelectorAll('tbody tr').forEach(tr =>
-    tr.addEventListener('click', () => openDayDetail(tr.dataset.k)));
-}
 
 // --- Window manager: drag, click-to-front, taskbar buttons ---
 const WIN_REGISTRY = [
