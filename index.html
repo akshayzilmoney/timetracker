@@ -1402,7 +1402,7 @@
     border-radius: 14px;
     padding: 18px 20px;
     width: 100%;
-    max-width: 440px;
+    max-width: 500px;
     max-height: 85vh;
     overflow-y: auto;
     animation: dashIn .15s ease-out;
@@ -1420,6 +1420,16 @@
     padding: 5px 8px; text-align: left;
   }
   .day-card td { border: none; border-bottom: 1px solid #22304a; padding: 6px 8px; font-size: 13px; }
+  .day-card input[type=time] {
+    background: #16213b; border: 1px solid #334155; color: #e2e8f0; border-radius: 6px;
+    padding: 4px 6px; font-size: 12px; outline: none; color-scheme: dark; width: 96px;
+  }
+  .day-card input[type=time]:focus { border-color: #38bdf8; }
+  .ds-del { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 13px; padding: 2px 6px; }
+  .ds-del:hover { color: #f87171; }
+  .ds-next { color: #64748b; font-size: 10px; margin-left: 3px; }
+  .ds-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .ds-msg { color: #f87171; font-size: 12px; margin-top: 6px; min-height: 14px; }
   .dm-note-row { display: flex; gap: 8px; }
   #dmNote {
     flex: 1;
@@ -1816,6 +1826,7 @@
           <button class="dash-btn" id="calPrev" title="Previous month">&#8249;</button>
           <button class="dash-btn" id="calToday">Today</button>
           <button class="dash-btn" id="calNext" title="Next month">&#8250;</button>
+          <button class="dash-btn" id="calExport" title="Download this month as a spreadsheet (opens in Excel)">&#11015; Excel</button>
         </div>
       </div>
       <div class="dash-cal-grid" id="calGrid"></div>
@@ -2215,6 +2226,7 @@ function saveDayToHistory(dayKey, workedMs, breakMs, targetMs, sessions) {
   const disk = lsGetJSON(HISTORY_KEY, {});
   Object.keys(disk).forEach(k => { if (!history[k]) history[k] = disk[k]; });
   const prev = history[dayKey] || {};
+  if (prev.sessionsEdited) return; // hand-edited sessions are never overwritten by a sync
   history[dayKey] = { worked: workedMs, breaks: breakMs, target: targetMs };
   if (prev.note) history[dayKey].note = prev.note;
   if (sessions && sessions.length) history[dayKey].sessions = sessions;
@@ -2725,6 +2737,56 @@ async function resolveCarryoverSessions(sessions) {
   return result;
 }
 
+// A session left open for many hours past its punch-in almost always means the
+// punch-out was forgotten: ATS reports nothing for it under "today", so the
+// still-working branch would tick it live forever and bank a 24h+ day. Ask
+// once for the real stop time (or fall back to a target-based estimate) and
+// close it out.
+const STALE_OPEN_MS = 14 * 3600000;
+async function closeStaleOpenSession() {
+  const list = data && Array.isArray(data.sessions_today) ? data.sessions_today : null;
+  if (!list || !list.length) return false;
+  const sorted = [...list].sort((a, b) => new Date(a.punch_in) - new Date(b.punch_in));
+  const last = sorted[sorted.length - 1];
+  if (last.punch_out) return false;
+  const startAt = new Date(last.punch_in);
+  if (Date.now() - startAt < STALE_OPEN_MS) return false;
+  const day = dateKey(startAt);
+  const logKey = day + '|' + last.punch_in;
+  const log = loadSnapOpenLog();
+  let endIso = log[logKey];
+  if (endIso === undefined) {
+    if (carryoverPromptOpen) return false;
+    carryoverPromptOpen = true;
+    const val = await new Promise(resolve => showPrompt(
+      'Your session that started ' + fmtClock(startAt) + ' on ' +
+      startAt.toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) +
+      ' has been open for over 14 hours and ATS never reported a punch-out for it.\n\n' +
+      'What time did you actually stop working? (e.g. 6:30 PM)',
+      '', v => resolve(v), false, () => resolve(null)));
+    carryoverPromptOpen = false;
+    const parsed = val && parseClockTimeOnDay(val, startAt);
+    const endDate = parsed && parsed <= startAt ? new Date(parsed.getTime() + 86400000) : parsed;
+    endIso = endDate && endDate > startAt && endDate <= new Date() ? endDate.toISOString() : null;
+    log[logKey] = endIso;
+    saveSnapOpenLog(log);
+  }
+  if (!endIso) {
+    const targetMs = (data.target_minutes || settings.targetMin) * 60000;
+    let before = 0;
+    sorted.forEach(s => { if (s.punch_out) before += Math.max(0, new Date(s.punch_out) - new Date(s.punch_in)); });
+    endIso = new Date(startAt.getTime() + Math.max(60000, targetMs - before)).toISOString();
+  }
+  const copy = JSON.parse(JSON.stringify(data));
+  const cs = [...copy.sessions_today].sort((a, b) => new Date(a.punch_in) - new Date(b.punch_in));
+  cs[cs.length - 1].punch_out = endIso;
+  copy.status = 'not_working';
+  copy.current_session = null;
+  loadJson(JSON.stringify(copy, null, 4), false);
+  refreshHistoryViews(day);
+  return true;
+}
+
 async function atsFetchToday(manual) {
   if (!ats || !ats.email || !ats.password) return;
   if (!navigator.onLine) return atsOfflineUi();
@@ -2763,8 +2825,9 @@ async function atsFetchToday(manual) {
       // necessarily mean "not punched in." If what's already on screen is
       // still an open (no punch_out) session, leave it showing - and ticking
       // live - until ATS actually reports the punch-out, not before.
+      await closeStaleOpenSession();
       const lastShown = data && Array.isArray(data.sessions_today) && data.sessions_today.length &&
-        data.sessions_today[data.sessions_today.length - 1];
+        [...data.sessions_today].sort((a, b) => new Date(a.punch_in) - new Date(b.punch_in)).pop();
       const stillWorking = lastShown && !lastShown.punch_out;
       if (stillWorking) {
         atsStatus('\u2714 Still working (night shift) \u2014 checked ' + now + '.', '#008000');
@@ -2787,7 +2850,7 @@ async function atsFetchToday(manual) {
       loadJson(text, manual);
       showBalloon('\u{1F501} ATS synced at ' + now);
     }
-    atsStatus('\u2714 Synced at ' + now + ' \u2014 syncs on open and at 11 PM.', '#008000');
+    atsStatus('\u2714 Synced at ' + now + ' \u2014 syncs on open, at 10 PM and at 11:50 PM.', '#008000');
     traySyncIcon('', 'last synced ' + now);
     atsAfterSync();
     if (manual) {
@@ -2853,6 +2916,7 @@ async function atsFetchSnapshots() {
     let snapOpenLogDirty = false;
     for (const day in snaps) {
       if (day === todayK) continue; // today is handled live
+      if (history[day] && history[day].sessionsEdited) continue; // hand-edited, keep as is
       const j = snaps[day];
       if (!Array.isArray(j.sessions_today) || j.sessions_today.length === 0) continue;
       const targetMs = (j.target_minutes || settings.targetMin) * 60000;
@@ -2937,6 +3001,7 @@ async function cloudPull() {
         // History: fill unknown days; when both sides know a day, the fuller record wins
         const ch = JSON.parse(d.timetracker_history || '{}');
         for (const k in ch) {
+          if (history[k] && history[k].sessionsEdited) continue;
           if (!history[k] || (ch[k].worked || 0) > (history[k].worked || 0)) {
             history[k] = Object.assign({}, history[k], ch[k]);
             monthDirty = true;
@@ -3000,13 +3065,17 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && cloudReady && cloudPushTimer) cloudPushNow();
 });
 
-// Nightly sync at 11 PM records the day's final punch-out (if the tab is open)
+// Nightly syncs at 10 PM and 11:50 PM capture the day's state (if the tab is open)
 function scheduleNightSync() {
   clearTimeout(atsTimer);
   const now = new Date();
-  const next = new Date(now);
-  next.setHours(23, 0, 0, 0);
-  if (next <= now) next.setDate(next.getDate() + 1);
+  let next = null;
+  [[22, 0], [23, 50]].forEach(t => {
+    const c = new Date(now);
+    c.setHours(t[0], t[1], 0, 0);
+    if (c <= now) c.setDate(c.getDate() + 1);
+    if (!next || c < next) next = c;
+  });
   atsTimer = setTimeout(() => {
     atsFetchToday(false);
     scheduleNightSync();
@@ -6960,6 +7029,48 @@ $('calNext').addEventListener('click', () => {
   calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
   renderCalendar();
 });
+// Download the month on screen as a CSV (opens straight in Excel)
+function csvCell(v) {
+  v = v == null ? '' : String(v);
+  return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+$('calExport').addEventListener('click', () => {
+  const y = calMonth.getFullYear(), mo = calMonth.getMonth();
+  const dim = new Date(y, mo + 1, 0).getDate();
+  const defT = settings.targetMin * 60000;
+  const hrs = ms => (ms / 3600000).toFixed(2);
+  const rows = [['Date', 'Day', 'Type', 'Sessions', 'First punch in', 'Last punch out',
+    'Worked (h)', 'Breaks (h)', 'Target (h)', 'Net (h)', 'Note']];
+  let tw = 0, tt = 0;
+  for (let d = 1; d <= dim; d++) {
+    const k = y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const rec = history[k];
+    if (!rec) continue;
+    const day = new Date(y, mo, d).toLocaleDateString(undefined, { weekday: 'short' });
+    if (isAbsence(rec)) {
+      rows.push([k, day, rec.kind === 'holiday' ? 'Holiday / Leave' : 'Sick', '', '', '', '', '', '', '', rec.note || '']);
+      continue;
+    }
+    const tgt = rec.target || defT;
+    const ss = rec.sessions || [];
+    const lastOut = ss.length && ss[ss.length - 1][1];
+    tw += rec.worked;
+    tt += tgt;
+    rows.push([k, day, 'Worked',
+      ss.map(s => fmtClock(new Date(s[0])) + ' - ' + (s[1] ? fmtClock(new Date(s[1])) : 'open')).join('; '),
+      ss.length ? fmtClock(new Date(ss[0][0])) : '', lastOut ? fmtClock(new Date(lastOut)) : '',
+      hrs(rec.worked), hrs(rec.breaks || 0), hrs(tgt), hrs(rec.worked - tgt), rec.note || '']);
+  }
+  if (rows.length === 1) return showBalloon('⚠️ No recorded days in this month to export.');
+  rows.push(['Total', '', '', '', '', '', hrs(tw), '', hrs(tt), hrs(tw - tt), '']);
+  const csv = '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'timetracker-' + y + '-' + String(mo + 1).padStart(2, '0') + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+});
 $('calToday').addEventListener('click', () => {
   calMonth = new Date();
   renderCalendar();
@@ -6984,8 +7095,17 @@ function openDayDetail(k) {
   ].map(s =>
     '<div class="dm-stat"><div class="dc-label">' + s[0] + '</div>' +
     '<div class="dc-value ' + s[2] + '">' + s[1] + '</div></div>').join('');
-  if (rec.sessions && rec.sessions.length) {
-    const isToday = k === dateKey(new Date());
+  const isToday = k === dateKey(new Date());
+  if (!isToday && !isAbsence(rec)) {
+    dsOrig = (rec.sessions || []).map(s => s.slice());
+    $('dmSessions').innerHTML = (dsOrig.length ? '' :
+      '<p class="db-empty" style="padding:8px 0">No punch-in/out detail was recorded for this day.</p>') +
+      '<table><thead><tr><th>#</th><th>Punch In</th><th>Punch Out</th><th>Duration</th><th></th></tr></thead><tbody>' +
+      dsOrig.map((s, i) => dsRowHtml(i, s)).join('') + '</tbody></table>' +
+      '<div class="ds-actions"><button class="dash-btn" id="dsAdd">+ Add session</button>' +
+      '<button class="dash-btn" id="dsSave">Save sessions</button></div><div class="ds-msg" id="dsMsg"></div>';
+    dsRenumber();
+  } else if (rec.sessions && rec.sessions.length) {
     $('dmSessions').innerHTML =
       '<table><thead><tr><th>#</th><th>Punch In</th><th>Punch Out</th><th>Duration</th></tr></thead><tbody>' +
       rec.sessions.map((s, i) => {
@@ -7002,6 +7122,78 @@ function openDayDetail(k) {
   $('dmNote').value = rec.note || '';
   $('dayModal').style.display = 'flex';
 }
+// --- Per-session editing (past days): times are edited row by row, the day's
+// worked/breaks totals are recomputed from the sessions ---
+let dsOrig = [];
+function hhmm(d) {
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+function dsRowHtml(origIdx, s) {
+  const a = s ? new Date(s[0]) : null;
+  const b = s && s[1] ? new Date(s[1]) : null;
+  const next = a && b && dateKey(b) !== dateKey(a) ? '<span class="ds-next">+1 day</span>' : '';
+  return '<tr data-orig="' + (s ? origIdx : '') + '"><td></td>' +
+    '<td><input type="time" class="ds-in" value="' + (a ? hhmm(a) : '') + '"></td>' +
+    '<td><input type="time" class="ds-out" value="' + (b ? hhmm(b) : '') + '">' + next + '</td>' +
+    '<td>' + (a && b ? fmtDurShort(b - a) : '—') + '</td>' +
+    '<td><button class="ds-del" title="Remove session">&#10005;</button></td></tr>';
+}
+function dsRenumber() {
+  $('dmSessions').querySelectorAll('tbody tr').forEach((tr, i) => { tr.firstElementChild.textContent = i + 1; });
+}
+function dsSave() {
+  const k = dmKey, rec = k && history[k];
+  if (!rec) return;
+  const msg = t => { $('dsMsg').textContent = t; };
+  const y = +k.slice(0, 4), mo = +k.slice(5, 7) - 1, d = +k.slice(8);
+  const atTime = v => new Date(y, mo, d, +v.slice(0, 2), +v.slice(3, 5), 0, 0);
+  const out = [];
+  for (const tr of $('dmSessions').querySelectorAll('tbody tr')) {
+    const inV = tr.querySelector('.ds-in').value, outV = tr.querySelector('.ds-out').value;
+    if (!inV || !outV) return msg('Every session needs both a punch-in and a punch-out time.');
+    const orig = tr.dataset.orig !== '' ? dsOrig[+tr.dataset.orig] : null;
+    const a = orig && hhmm(new Date(orig[0])) === inV ? orig[0] : atTime(inV).toISOString();
+    let b;
+    if (orig && orig[1] && hhmm(new Date(orig[1])) === outV) b = orig[1];
+    else {
+      const bd = atTime(outV);
+      if (bd <= new Date(a)) bd.setDate(bd.getDate() + 1); // stopped after midnight
+      b = bd.toISOString();
+    }
+    if (new Date(b) <= new Date(a)) return msg('Punch-out must be after punch-in.');
+    out.push([a, b]);
+  }
+  out.sort((p, q) => new Date(p[0]) - new Date(q[0]));
+  let worked = 0, breaks = 0;
+  for (let i = 0; i < out.length; i++) {
+    worked += new Date(out[i][1]) - new Date(out[i][0]);
+    if (i) {
+      const gap = new Date(out[i][0]) - new Date(out[i - 1][1]);
+      if (gap < 0) return msg('Sessions overlap - fix the times and save again.');
+      breaks += gap;
+    }
+  }
+  rec.sessions = out;
+  rec.worked = worked;
+  rec.breaks = breaks;
+  rec.sessionsEdited = true;
+  lsSet(HISTORY_KEY, JSON.stringify(history));
+  refreshHistoryViews(k);
+  showBalloon('✅ Sessions saved for ' + k + '.');
+}
+$('dmSessions').addEventListener('click', e => {
+  const del = e.target.closest('.ds-del');
+  if (del) {
+    del.closest('tr').remove();
+    dsRenumber();
+  } else if (e.target.id === 'dsAdd') {
+    $('dmSessions').querySelector('tbody').insertAdjacentHTML('beforeend', dsRowHtml(0, null));
+    dsRenumber();
+  } else if (e.target.id === 'dsSave') {
+    dsSave();
+  }
+});
+
 function closeDayDetail() {
   dmKey = null;
   $('dayModal').style.display = 'none';
