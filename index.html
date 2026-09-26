@@ -39,37 +39,34 @@
   }
   .xp-window.windowed .xp-body { max-width: none; }
 
-  /* --- profile strip --- */
-  /* Compact by design: the profile strip is secondary to today's numbers */
+  /* --- user header --- */
   .profile-strip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: linear-gradient(180deg, #7AA1E6 0%, #6375D6 100%);
-    border: 1px solid #5A7EDC;
-    border-radius: 4px;
-    padding: 5px 8px;
-    margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 14px; margin-bottom: 12px; border-radius: 6px;
+    border: 1px solid #1C4DB8;
+    background: linear-gradient(180deg, #5A8BEA 0%, #3565D6 55%, #2A57C4 100%);
   }
+  .ps-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .ps-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .avatar {
     flex: none;
-    width: 30px; height: 30px;
+    width: 38px; height: 38px;
     border-radius: 4px;
-    border: 1px solid #fff;
-    background: linear-gradient(135deg, #FBB040, #e65512);
+    border: 2px solid #fff;
+    background: linear-gradient(180deg, #F59A3C, #D9661A);
     color: #fff;
+    font-family: "Trebuchet MS", Tahoma, sans-serif;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 18px;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 1px 1px 3px rgba(0,0,0,0.35);
   }
   .profile-name {
+    font-family: "Trebuchet MS", Tahoma, sans-serif;
     font-weight: bold;
-    font-size: 13px;
+    font-size: 15px;
     color: #fff;
-    text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
   }
-  .profile-sub { color: #D6DFF7; }
+  .profile-sub { color: #EAF1FF; }
   .pdot {
     display: inline-block; width: 8px; height: 8px; border-radius: 50%;
     margin-right: 5px; vertical-align: middle;
@@ -84,7 +81,7 @@
     height: auto;
     min-height: 220px;
     max-height: calc(100vh - 78px); /* stays clear of the taskbar */
-    width: 660px;      /* wide enough that nothing needs to scroll */
+    width: 720px;      /* wide enough that nothing needs to scroll */
     max-width: 94vw;
     min-width: 360px;
     margin: 24px auto;
@@ -134,6 +131,15 @@
   }
   .menu-bar span { padding: 2px 7px; cursor: default; }
   .menu-bar span:hover { background: #316AC5; color: #fff; }
+  .menu-bar .mi { position: relative; display: inline-block; }
+  .mdrop {
+    display: none; position: absolute; left: 0; top: 100%; z-index: 30; min-width: 170px;
+    background: #fff; border: 1px solid #ACA899; box-shadow: 2px 2px 4px rgba(0,0,0,.35);
+    color: #000; padding: 2px;
+  }
+  .mi.open .mdrop { display: block; }
+  .mrow { padding: 4px 22px 4px 12px; white-space: nowrap; cursor: default; }
+  .mrow:hover { background: #316AC5; color: #fff; }
 
   .xp-body { padding: 14px; }
 
@@ -206,17 +212,34 @@
 
   #loadBtn { display: block; margin: 0 auto; }
 
-  #atsBar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+  .o5-toolbar {
+    height: 38px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 0 8px; border-bottom: 1px solid #D5D2C2;
+    background: linear-gradient(180deg, #F7F6F0, #ECE9D8);
   }
-  #atsStatusLine { font-weight: bold; }
-  .ats-btns { display: flex; gap: 6px; flex-shrink: 0; }
-  #manualWrap { margin-top: 6px; text-align: right; }
-  #manualWrap a { color: #0645AD; font-size: 11px; }
-  #inputArea { margin-top: 8px; }
+  .o5-tools { display: flex; align-items: center; gap: 2px; }
+  button.o5-tool {
+    min-width: 0; height: 30px; padding: 0 8px;
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid transparent; background: transparent;
+  }
+  button.o5-tool:hover { border-color: #CECEC3; background: linear-gradient(180deg, #fff, #EBEAE3); box-shadow: none; }
+  button.o5-tool:disabled { cursor: default; }
+  button.o5-tool.syncing { background: transparent; }
+  button.o5-login {
+    display: none; font-weight: bold; border: 1px solid #003C74; border-radius: 3px;
+    background: linear-gradient(180deg, #fff 0%, #F4F3EE 60%, #E3E0D6 100%);
+  }
+  .o5-sync { display: flex; align-items: center; gap: 6px; color: #3E3E36; min-width: 0; }
+  .o5-sync-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .o5-sync[data-state="err"] { color: #B00020; }
+  .o5-sync[data-state="warn"] { color: #9A5B00; }
+  .o5-sync[data-state="err"] .o5-sync-txt { cursor: pointer; text-decoration: underline; }
+  #inputArea { margin-bottom: 12px; }
+  .empty-hint { color: #4B4B42; margin-bottom: 10px; }
+  #todayEmpty { display: block; }
+  #result[style*="block"] ~ #todayEmpty, #todaySkel[style*="block"] ~ #todayEmpty { display: none; }
 
   /* --- XP message box --- */
   /* Above every screen (login 950, dashboard 1400, day modal 1500) so dialogs
@@ -270,94 +293,91 @@
   }
 
   #result { display: none; }
+  #result, .o5-sync, #statusStrip { font-variant-numeric: tabular-nums; }
+  .xp-body fieldset { padding: 10px 14px 14px; border-radius: 5px; margin-bottom: 12px; }
 
   .status-badge {
-    display: inline-block;
+    display: inline-flex; align-items: center; gap: 5px;
     padding: 2px 8px;
-    border: 1px solid #ACA899;
-    background: #fff;
-    box-shadow: inset 1px 1px 0 #808080;
+    border: 1px solid #7FB57F; border-radius: 10px;
+    background: #EAF6E6; color: #1E6B1E;
     font-weight: bold;
-    margin-bottom: 10px;
   }
-  .status-working { color: #008000; }
-  .status-out { color: #806000; }
-  .status-done { color: #0046D5; }
+  .status-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .status-working { color: #1E6B1E; }
+  .status-out { color: #9A5B00; background: #FFF3DF; border-color: #E5B36A; }
+  .status-done { color: #0B3FA8; background: #E8F0FF; border-color: #8FAEE8; }
 
   /* The hero: when can I leave. Everything else supports this number. */
-  .leave-box {
-    text-align: center;
-    background: #fff;
-    border: 1px solid #7F9DB9;
-    padding: 18px 14px;
-    margin-bottom: 10px;
+  .o5-hero {
+    display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    background: #fff; border: 1px solid #7F9DB9;
   }
-  .leave-label { color: #555; margin-bottom: 4px; }
+  .hero-main { padding: 18px 22px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid #DCE3EE; }
+  .leave-label { color: #4B4B42; font-size: 12px; margin-top: 4px; }
   .leave-time {
-    font-family: "Courier New", monospace;
-    font-size: 52px;
-    line-height: 1.05;
-    font-weight: bold;
-    letter-spacing: -1px;
-    color: #003399;
-    font-variant-numeric: tabular-nums;
+    font-family: "Trebuchet MS", Tahoma, sans-serif;
+    font-size: 58px; line-height: 1; font-weight: bold; letter-spacing: -1px;
+    color: #0B3FA8; font-variant-numeric: tabular-nums;
   }
-  .leave-time.done { color: #008000; }
+  .leave-time.done { color: #1E6B1E; }
+  .leave-sub { font-size: 12px; font-weight: bold; color: #1E6B1E; font-variant-numeric: tabular-nums; min-height: 15px; }
+  .leave-sub.paused { color: #9A5B00; }
+  .hero-side { padding: 16px 20px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+  .hs-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .hs-row > span { color: #4B4B42; }
+  .hs-row b { font-size: 16px; font-variant-numeric: tabular-nums; }
+  .hs-row b small { font-size: 11px; font-weight: normal; color: #4B4B42; }
+  .hs-row b.tgt { font-size: 12px; }
+  .hs-div { height: 1px; background: #DCE3EE; }
 
-  .stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 10px;
+  .progress-wrap { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .progress-bar {
+    flex: 1; height: 16px; padding: 2px;
+    background: #fff; border: 1px solid #7F9DB9; border-radius: 3px;
   }
-  .stat {
-    background: #fff;
-    border: 1px solid #7F9DB9;
-    padding: 7px 6px;
-    text-align: center;
+  .progress-bar.sm { flex: none; height: 12px; }
+  .progress-fill {
+    height: 100%; width: 0%; transition: width .5s;
+    background: repeating-linear-gradient(90deg, #37B437 0, #6CD66C 3px, #37B437 6px, #fff 6px, #fff 8px);
   }
-  .stat .label { color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: .03em; }
-  .stat .value { font-size: 16px; font-weight: bold; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .progress-text { min-width: 40px; text-align: right; font-weight: bold; color: #000; font-variant-numeric: tabular-nums; }
 
-  .progress-wrap { margin-bottom: 10px; }
-
-  /* Defrag-style day timeline (one block = 5 minutes) */
-  .defrag-wrap { margin-bottom: 12px; }
+  /* Timeline: one block = 5 minutes */
+  .tl-panel { background: #fff; border: 1px solid #7F9DB9; padding: 12px 14px 10px; margin-bottom: 10px; }
+  .tl-marks { position: relative; height: 18px; }
+  .tl-m { position: absolute; bottom: 2px; font-weight: bold; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tl-m.m-in { color: #1F4FC9; }
+  .tl-m.m-now { color: #1E6B1E; transform: translateX(-50%); }
+  .tl-m.m-leave { color: #0B3FA8; transform: translateX(-50%); }
+  .tl-strip { position: relative; }
   #defragStrip {
-    display: flex; flex-wrap: wrap; gap: 1px; align-content: flex-start;
-    background: #000; padding: 3px; min-height: 20px;
-    border: 2px inset #d4d0c8;
+    display: flex; gap: 1px; height: 20px; padding: 2px;
+    background: #F2F2EC; border: 1px solid #B9B9AC;
   }
-  #defragStrip i, .dl { display: inline-block; width: 5px; height: 13px; }
-  #defragStrip .work, .dl.work { background: #3050c8; }
-  #defragStrip .brk, .dl.brk { background: #d04038; }
-  #defragStrip .free, .dl.free { background: #e9e9e9; }
-  #defragStrip .now, .dl.now { background: #58e058; animation: defragBlink 2s steps(2) infinite; }
+  #defragStrip i { flex: 1 1 0; min-width: 0; display: block; background: transparent; }
+  #defragStrip .work { background: #1F4FC9; }
+  #defragStrip .brk { background: #E58A12; }
+  #defragStrip .free { background: #A9C1EC; }
+  #defragStrip .now { background: #3CC03C; animation: defragBlink 2s steps(2) infinite; }
   @keyframes defragBlink { 50% { background: #b8ffb8; } }
+  .tl-line { position: absolute; top: -3px; bottom: -3px; width: 2px; display: none; }
+  .tl-line.now { background: #1E6B1E; }
+  .tl-line.leave { background: #0B3FA8; }
+  .tl-axis { position: relative; height: 16px; margin-top: 4px; color: #4B4B42; }
+  .tl-axis span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .tl-axis span:first-child { transform: none; }
+  .tl-axis span:last-child { transform: translateX(-100%); }
   .defrag-legend {
     display: flex; align-items: center; gap: 4px;
-    font-size: 10px; color: #444; margin-top: 3px;
+    color: #3E3E36; margin-top: 6px;
   }
-  .defrag-legend .dl { height: 9px; border: 1px solid #808080; margin-left: 6px; animation: none; }
+  .dl { display: inline-block; width: 10px; height: 10px; margin-left: 10px; }
   .defrag-legend .dl:first-child { margin-left: 0; }
-  .defrag-note { margin-left: auto; color: #777; font-style: italic; }
-  .progress-bar {
-    height: 22px;
-    background: #fff;
-    border: 1px solid #7F9DB9;
-    padding: 1px;
-  }
-  .progress-fill {
-    height: 100%;
-    width: 0%;
-    transition: width .5s;
-    background:
-      repeating-linear-gradient(90deg,
-        transparent 0px, transparent 6px, #ECE9D8 6px, #ECE9D8 8px),
-      linear-gradient(180deg, #ACE97C 0%, #2FB833 50%, #77D766 100%);
-  }
-  .progress-text { text-align: right; color: #555; margin-top: 3px; }
-
+  .dl.work { background: #1F4FC9; }
+  .dl.brk { background: #E58A12; }
+  .dl.free { background: #A9C1EC; }
+  .defrag-note { margin-left: auto; color: #5E5E54; font-style: italic; }
   table {
     width: 100%; border-collapse: collapse; background: #fff;
     border: 1px solid #7F9DB9;
@@ -375,7 +395,11 @@
   td { padding: 4px 6px; border-right: 1px solid #EDEDED; border-bottom: 1px solid #EDEDED; }
   /* Numeric Duration column reads right-aligned in today's sessions table */
   #result table th:last-child, #result table td:last-child { text-align: right; }
-  .ongoing { color: #008000; font-weight: bold; }
+  .ongoing { color: #1E6B1E; font-weight: bold; }
+  #result tr.cur { background: #EEF4FF; }
+  #result tr.cur td:last-child { font-weight: bold; }
+  #result tr.brk-row { background: #FFF6E8; color: #7A4A00; font-style: italic; }
+  #result tr.brk-row td { padding-top: 3px; padding-bottom: 3px; }
 
   /* first-sync placeholder */
   .skel {
@@ -388,12 +412,27 @@
   .neg { color: #C00000; }
   .muted { color: #555; text-align: center; padding: 10px 0; }
 
+  .wk-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 10px; }
+  .wk-panel { background: #fff; border: 1px solid #7F9DB9; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .wk-panel > span { color: #4B4B42; }
+  .wk-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .wk-top > span:first-child { color: #4B4B42; }
+  .wk-top b { font-size: 18px; }
+  .wk-of { color: #4B4B42; }
+  .wk-bal { justify-content: center; gap: 4px; }
+  .wk-net { font-size: 18px; }
+  .wk-net.pos { color: #1E6B1E; }
+  .wk-net.neg { color: #B00020; }
+
   .status-strip {
-    border-top: 1px solid #ACA899;
-    background: #ECE9D8;
-    padding: 3px 8px;
-    color: #444;
-    box-shadow: inset 1px 1px 0 #fff;
+    height: 24px; flex-shrink: 0;
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 3px; padding: 2px 3px;
+    border-top: 1px solid #D5D2C2; background: #ECE9D8; color: #2A2A24;
+  }
+  .status-strip span {
+    display: flex; align-items: center; padding: 0 6px; min-width: 0; white-space: nowrap; overflow: hidden;
+    border: 1px solid #C8C5B5; border-right-color: #fff; border-bottom-color: #fff;
   }
 
   /* --- desktop icons --- */
@@ -947,19 +986,27 @@
   /* --- prestige --- */
   .avatar { position: relative; }
   .avatar .star { position: absolute; top: -9px; right: -9px; font-size: 13px; }
-  #prestigeBtn { display: none; margin-top: 4px; min-width: 0; padding: 2px 8px; font-size: 10px; }
+  #prestigeBtn { display: none; min-width: 0; padding: 2px 8px; font-size: 10px; }
+  .o5-sync[data-state="spin"] .o5-sync-ico svg { animation: o5spin 1.2s linear infinite; }
+  @keyframes o5spin { to { transform: rotate(360deg); } }
 
   /* --- profile XP bar --- */
-  .xp-wrap { flex: 1; margin-left: 8px; }
-  .xp-level { color: #D6DFF7; font-size: 10px; margin-bottom: 2px; }
+  .xp-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; min-width: 190px; margin-left: 0; }
+  .xp-level { color: #fff; font-size: 11px; }
   .xp-bar {
-    height: 5px;
-    background: rgba(255,255,255,0.35);
-    border: 1px solid #fff;
-    border-radius: 4px;
-    overflow: hidden;
+    width: 190px; height: 7px;
+    background: #1B3F97; border: 1px solid #16357F; border-radius: 4px; overflow: hidden;
   }
-  #xpFill { height: 100%; width: 0%; background: linear-gradient(180deg, #ACE97C, #2FB833); }
+  #xpFill { height: 100%; width: 0%; background: linear-gradient(180deg, #9BE88B, #3DB43D); }
+  .xp-pts { display: flex; align-items: center; gap: 8px; color: #D8E5FF; font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 640px) {
+    .o5-hero, .wk-grid { grid-template-columns: 1fr; }
+    .hero-main { border-right: none; border-bottom: 1px solid #DCE3EE; }
+    .leave-time { font-size: 44px; }
+    .profile-strip { flex-wrap: wrap; }
+    .o5-toolbar { height: auto; min-height: 38px; flex-wrap: wrap; padding: 4px 8px; }
+  }
 
   /* --- panel windows (settings, winamp, msn, defrag, achievements) --- */
   .mini-win .panel-body { padding: 10px; width: 300px; }
@@ -1524,7 +1571,24 @@
       <span class="tbtn" id="btnMin" title="Minimize">&#95;</span><span class="tbtn" id="btnMax" title="Maximize">&#9633;</span><span class="tbtn close" id="btnClose" title="Close">&#10005;</span>
     </span>
   </div>
-  <div class="menu-bar"><span>File</span><span>View</span><span>Help</span></div>
+  <div class="menu-bar" id="menuBar">
+    <span class="mi" id="menuFile">File
+      <div class="mdrop" id="fileMenu">
+        <div class="mrow" id="menuLogin">Login&hellip;</div>
+        <div class="mrow" id="menuSync">Sync now</div>
+        <div class="mrow" id="menuPaste">Paste punch JSON&hellip;</div>
+      </div>
+    </span><span>View</span><span>Help</span>
+  </div>
+
+  <div class="o5-toolbar">
+    <div class="o5-tools">
+      <button class="o5-tool" id="atsSyncNowBtn"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 6.5A5 5 0 0 0 3.6 5M3 9.5A5 5 0 0 0 12.4 11" stroke="#1F5FD1" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M3 2.5V5.5H6M13 13.5V10.5H10" stroke="#1F5FD1" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="syncBtnText">Sync now</span></button>
+      <button class="o5-tool" id="manualToggle"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="2.5" width="10" height="12" rx="1" fill="#FFF8DC" stroke="#8A6D2A"/><rect x="5.5" y="1.5" width="5" height="2.5" rx="0.6" fill="#C9C3B0" stroke="#6E6653"/><path d="M5.5 7h5M5.5 9.5h5M5.5 12h3" stroke="#8A6D2A"/></svg>Paste punch JSON&hellip;</button>
+      <button class="o5-tool o5-login" id="atsLoginBtn">Login&hellip;</button>
+    </div>
+    <div class="o5-sync" id="atsStatusLine" data-state="off"><span class="o5-sync-ico"></span><span class="o5-sync-txt">Not connected to ATS.</span></div>
+  </div>
 
   <div id="leaveBanner" class="notice-banner">
     <span>&#128231; <b>New!</b> You can now apply for leave directly through O5S &mdash; try the <b>Request Leave</b> icon.</span>
@@ -1532,41 +1596,83 @@
   </div>
 
   <div class="xp-body">
-  <p class="subtitle" id="subtitle">Target: 8 working hours. Your ATS punches load automatically.</p>
+  <div id="inputArea" style="display:none">
+    <div class="drop-zone" id="dropZone">
+      <p><strong>Browse for a JSON file...</strong> or drag &amp; drop it here</p>
+      <input type="file" id="fileInput" accept=".json,application/json" hidden>
+    </div>
+    <textarea id="jsonInput" placeholder='...or paste the JSON here (loads automatically)'></textarea>
+    <button id="loadBtn">Calculate My Leave Time</button>
+  </div>
 
   <div class="profile-strip">
-    <div class="avatar" id="profileAvatar"><span id="avatarLetter">?</span></div>
-    <div>
-      <div class="profile-name" id="profileName">No user</div>
-      <div class="profile-sub"><span class="pdot off" id="presenceDot"></span><span id="presenceText">Logged in</span></div>
+    <div class="ps-left">
+      <div class="avatar" id="profileAvatar"><span id="avatarLetter">?</span></div>
+      <div class="ps-id">
+        <div class="profile-name" id="profileName">No user</div>
+        <div class="profile-sub"><span class="pdot off" id="presenceDot"></span><span id="presenceText">Logged in</span></div>
+      </div>
     </div>
     <div class="xp-wrap">
-      <div class="xp-level" id="xpLevel">Level 1 &#8212; Intern</div>
+      <div class="xp-level" id="xpLevel">Level 1 &middot; Intern</div>
       <div class="xp-bar"><div id="xpFill"></div></div>
-      <button id="prestigeBtn">&#11088; Prestige</button>
+      <div class="xp-pts"><span id="xpPoints">0 XP</span><button id="prestigeBtn">&#11088; Prestige</button></div>
     </div>
   </div>
 
-  <fieldset>
-    <legend>ATS Sync</legend>
-    <div id="atsBar">
-      <span id="atsStatusLine">&#128274; Not connected to ATS.</span>
-      <span class="ats-btns">
-        <button id="atsSyncNowBtn">&#128257; Sync Now</button>
-        <button id="atsLoginBtn">Login&hellip;</button>
-      </span>
-    </div>
-    <div id="manualWrap"><a href="#" id="manualToggle">Paste punch JSON manually&hellip;</a></div>
-    <div id="inputArea" style="display:none">
-      <div class="drop-zone" id="dropZone">
-        <p><strong>Browse for a JSON file...</strong> or drag &amp; drop it here</p>
-        <input type="file" id="fileInput" accept=".json,application/json" hidden>
+  <div id="result">
+    <fieldset>
+      <legend>Today</legend>
+      <div class="o5-hero">
+        <div class="hero-main">
+          <div><span class="status-badge status-working" id="statusBadge"></span></div>
+          <div class="leave-label" id="leaveLabel">You can leave at</div>
+          <div class="leave-time" id="leaveTime">--:--</div>
+          <div class="leave-sub" id="leaveSub"></div>
+        </div>
+        <div class="hero-side">
+          <div class="hs-row"><span>Worked</span><b id="workedVal">-</b></div>
+          <div class="hs-row"><span>Remaining</span><b id="remainingVal">-</b></div>
+          <div class="hs-row"><span>Breaks</span><b><span id="breakVal">-</span> <small id="breakCount"></small></b></div>
+          <div class="hs-div"></div>
+          <div class="hs-row"><span>Target</span><b class="tgt" id="targetVal">-</b></div>
+        </div>
       </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText">0%</div>
+      </div>
+    </fieldset>
 
-      <textarea id="jsonInput" placeholder='...or paste the JSON here (loads automatically)'></textarea>
-      <button id="loadBtn">Calculate My Leave Time</button>
-    </div>
-  </fieldset>
+    <fieldset>
+      <legend>Timeline</legend>
+      <div class="tl-panel">
+        <div class="tl-marks">
+          <span class="tl-m m-in" id="tlIn"></span>
+          <span class="tl-m m-now" id="tlNow"></span>
+          <span class="tl-m m-leave" id="tlLeave"></span>
+        </div>
+        <div class="tl-strip">
+          <div id="defragStrip"></div>
+          <div class="tl-line now" id="tlLineNow"></div>
+          <div class="tl-line leave" id="tlLineLeave"></div>
+        </div>
+        <div class="tl-axis" id="tlAxis"></div>
+        <div class="defrag-legend">
+          <i class="dl work"></i> Worked
+          <i class="dl brk"></i> Break
+          <i class="dl free"></i> Still to go
+          <span class="defrag-note">Defrag view &middot; 1 block = 5 min</span>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Punch in</th><th>Punch out</th><th>Duration</th></tr>
+        </thead>
+        <tbody id="sessionsBody"></tbody>
+      </table>
+    </fieldset>
+  </div>
 
   <div id="todaySkel" style="display:none">
     <fieldset>
@@ -1575,73 +1681,29 @@
     </fieldset>
   </div>
 
-  <div id="result">
-    <fieldset>
+  <fieldset id="todayEmpty">
     <legend>Today</legend>
-    <span class="status-badge" id="statusBadge"></span>
-
-    <div class="leave-box">
-      <div class="leave-label" id="leaveLabel">You can leave at</div>
-      <div class="leave-time" id="leaveTime">--:--</div>
-    </div>
-
-    <div class="stats">
-      <div class="stat">
-        <div class="label">Worked</div>
-        <div class="value" id="workedVal">-</div>
-      </div>
-      <div class="stat">
-        <div class="label">Remaining</div>
-        <div class="value" id="remainingVal">-</div>
-      </div>
-      <div class="stat">
-        <div class="label">Breaks</div>
-        <div class="value" id="breakVal">-</div>
-      </div>
-    </div>
-
-    <div class="progress-wrap">
-      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-      <div class="progress-text" id="progressText">0%</div>
-    </div>
-
-    <div class="defrag-wrap">
-      <div id="defragStrip"></div>
-      <div class="defrag-legend">
-        <i class="dl work"></i> Work
-        <i class="dl brk"></i> Break
-        <i class="dl now"></i> Now
-        <i class="dl free"></i> Ahead
-        <span class="defrag-note">Estimated disk fragmentation: your workday (5 min per block)</span>
-      </div>
-    </div>
-
-    <table>
-      <thead>
-        <tr><th>#</th><th>Punch In</th><th>Punch Out</th><th>Duration</th></tr>
-      </thead>
-      <tbody id="sessionsBody"></tbody>
-    </table>
-    </fieldset>
-  </div>
+    <p class="empty-hint" id="subtitle">Target: 8 working hours. Your ATS punches load automatically.</p>
+    <button id="emptyPaste">Paste punch JSON&hellip;</button>
+  </fieldset>
 
   <fieldset>
-    <legend>This Week</legend>
-    <div class="stats two">
-      <div class="stat">
-        <div class="label">Worked</div>
-        <div class="value" id="wTotalVal">-</div>
+    <legend>This week</legend>
+    <div class="wk-grid">
+      <div class="wk-panel">
+        <div class="wk-top"><span>Worked</span><span><b id="wTotalVal">-</b><span class="wk-of" id="wTargetTxt"></span></span></div>
+        <div class="progress-bar sm"><div class="progress-fill" id="weekFill"></div></div>
       </div>
-      <div class="stat">
-        <div class="label">Net +/-</div>
-        <div class="value" id="wNetVal">-</div>
+      <div class="wk-panel wk-bal">
+        <span>Balance</span>
+        <b id="wNetVal" class="wk-net">-</b>
       </div>
     </div>
   </fieldset>
 
   </div>
 
-  <div class="status-strip" id="statusStrip">Ready</div>
+  <div class="status-strip" id="statusStrip"><span id="sbStatus">Ready</span><span id="sbWorked"></span><span id="sbLeave"></span><span id="sbWeek"></span></div>
 </div>
 
 <div class="overlay" id="msgOverlay">
@@ -2383,12 +2445,49 @@ let cloudPushTimer = null;
 
 function atsSave() { lsSet(ATS_KEY, JSON.stringify(ats)); }
 
-// Status line in the "ATS Sync" panel of the main window
+// Sync status in the main window toolbar. Callers pass a message and (for
+// errors / progress / success) a colour; the colour picks the icon and tint.
+const NIGHT_SYNC_TIMES = [[22, 0], [23, 50]]; // 10 PM and 11:50 PM, used by scheduleNightSync too
+function nextNightSync(from) {
+  let next = null;
+  NIGHT_SYNC_TIMES.forEach(t => {
+    const c = new Date(from);
+    c.setHours(t[0], t[1], 0, 0);
+    if (c <= from) c.setDate(c.getDate() + 1);
+    if (!next || c < next) next = c;
+  });
+  return next;
+}
+const SYNC_ICONS = {
+  ok: '<svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6.5" fill="#2E9A2E"/><path d="M4 7.2l2 2 4-4.4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  err: '<svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6.5" fill="#C8281E"/><path d="M4.5 4.5l5 5M9.5 4.5l-5 5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  warn: '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1.2L13.2 12H0.8z" fill="#E9A21A" stroke="#9A5B00" stroke-linejoin="round"/><path d="M7 5v3.4M7 9.6v1" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  spin: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M13 6.5A5 5 0 0 0 3.6 5M3 9.5A5 5 0 0 0 12.4 11" stroke="#1F5FD1" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M3 2.5V5.5H6M13 13.5V10.5H10" stroke="#1F5FD1" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  off: '<svg width="14" height="14" viewBox="0 0 14 14"><rect x="2.5" y="6" width="9" height="6.5" rx="1" fill="#9AA0A6" stroke="#5F6368"/><path d="M4.5 6V4.2a2.5 2.5 0 0 1 5 0V6" stroke="#5F6368" stroke-width="1.4" fill="none"/></svg>',
+  info: '<svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6.5" fill="#7D8FB0"/><path d="M7 6.2v4M7 3.6v1" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>'
+};
 function atsStatus(msg, color) {
   const el = $('atsStatusLine');
-  el.textContent = msg;
-  el.style.color = color || '';
+  let state = 'info';
+  if (color === '#a00') state = 'err';
+  else if (color === '#b8860b') state = 'warn';
+  else if (color === '#008000') state = 'ok';
+  else if (/^[🔁🔄]/u.test(msg)) state = 'spin';
+  else if (/^🔒/u.test(msg)) state = 'off';
+  let text = msg.replace(/^[^\p{L}\p{N}]+/u, '');
+  const m = /^Synced at (.+?) —/.exec(text);
+  if (m) text = 'Synced ' + m[1] + ' · next auto-sync ' + fmtClock(nextNightSync(new Date()));
+  el.dataset.state = state;
+  el.title = state === 'err' ? 'Click to retry' : '';
+  el.querySelector('.o5-sync-ico').innerHTML = SYNC_ICONS[state];
+  el.querySelector('.o5-sync-txt').textContent = text;
+  // Login is only prominent while signed out (it also lives in the File menu)
+  const signedOut = !ats || !ats.email || !ats.password || state === 'off' || /login failed/i.test(msg);
+  $('atsLoginBtn').style.display = signedOut ? 'inline-flex' : 'none';
 }
+$('atsStatusLine').addEventListener('click', () => {
+  if ($('atsStatusLine').dataset.state === 'err') $('atsSyncNowBtn').click();
+});
 
 // Little tray icon next to the clock mirroring the sync state
 function traySyncIcon(state, tip) {
@@ -2410,7 +2509,7 @@ function startSyncButton() {
 
   const updateBtnText = () => {
     const elapsed = Math.floor((Date.now() - atsSyncStartTime) / 1000);
-    btn.textContent = `\u{1F504} Syncing... (${elapsed}s)`;
+    $('syncBtnText').textContent = `Syncing… (${elapsed}s)`;
   };
 
   updateBtnText();
@@ -2421,7 +2520,7 @@ function stopSyncButton() {
   const btn = $('atsSyncNowBtn');
   btn.disabled = false;
   btn.classList.remove('syncing');
-  btn.textContent = '\u{1F501} Sync Now';
+  $('syncBtnText').textContent = 'Sync now';
   clearInterval(atsSyncBtnTimer);
   atsSyncBtnTimer = null;
   atsSyncStartTime = 0;
@@ -2517,6 +2616,17 @@ $('atsSyncNowBtn').addEventListener('click', () => {
   atsFetchToday(true);
 });
 $('atsLoginBtn').addEventListener('click', () => atsSetup());
+
+// File menu (Login lives here; it is also shown in the toolbar while signed out)
+$('menuFile').addEventListener('click', e => {
+  e.stopPropagation();
+  $('menuFile').classList.toggle('open');
+});
+document.addEventListener('click', () => $('menuFile').classList.remove('open'));
+$('menuLogin').addEventListener('click', () => atsSetup());
+$('menuSync').addEventListener('click', () => $('atsSyncNowBtn').click());
+$('menuPaste').addEventListener('click', () => $('manualToggle').click());
+$('emptyPaste').addEventListener('click', () => $('manualToggle').click());
 
 function atsSetup() {
   showPrompt('ATS Sync \u2014 enter your hr.zilmoney.com email:', (ats && ats.email) || '', email => {
@@ -3070,12 +3180,7 @@ function scheduleNightSync() {
   clearTimeout(atsTimer);
   const now = new Date();
   let next = null;
-  [[22, 0], [23, 50]].forEach(t => {
-    const c = new Date(now);
-    c.setHours(t[0], t[1], 0, 0);
-    if (c <= now) c.setDate(c.getDate() + 1);
-    if (!next || c < next) next = c;
-  });
+  next = nextNightSync(now);
   atsTimer = setTimeout(() => {
     atsFetchToday(false);
     scheduleNightSync();
@@ -3261,9 +3366,15 @@ $('btnClose').addEventListener('click', shutdown);
 // --- Ambient indicators: defrag day timeline, taskbar chip, presence dot ---
 let lastDefragSig = null;
 
-// Disk Defragmenter-style visualization of the day (one block = 5 minutes)
-function renderDefrag(sorted, now, isPastDay, targetMs, breakMs) {
-  const SLOT = 300000;
+// Timeline: one block = 5 minutes on an hour-aligned axis (first-punch hour
+// to the hour after the expected leave time). leaveMs is 0 when there is no
+// leave time to show (past day, or target already met).
+let tlAxis = null; // { start, end } in ms, used to position the Now / Leave markers
+function tlPct(t) {
+  return tlAxis ? Math.max(0, Math.min(100, (t - tlAxis.start) / (tlAxis.end - tlAxis.start) * 100)) : 0;
+}
+function renderDefrag(sorted, now, isPastDay, targetMs, leaveMs) {
+  const SLOT = 300000, HOUR = 3600000;
   const first = new Date(sorted[0].punch_in).getTime();
   const sess = sorted.map(s => {
     const a = new Date(s.punch_in).getTime();
@@ -3272,19 +3383,61 @@ function renderDefrag(sorted, now, isPastDay, targetMs, breakMs) {
   });
   const lastEnd = Math.max.apply(null, sess.map(s => s[1]));
   const liveEdge = isPastDay ? lastEnd : now.getTime();
-  // Draw blocks up to the expected leave time (or further, if already past it)
-  let end = Math.max(first + targetMs + breakMs, liveEdge);
-  end = Math.min(end, first + 57600000); // cap the strip at 16 hours
+  const axisStartD = new Date(first);
+  axisStartD.setMinutes(0, 0, 0);
+  const axisStart = axisStartD.getTime();
+  const endD = new Date(Math.max(leaveMs, liveEdge, lastEnd));
+  endD.setMinutes(0, 0, 0);
+  let axisEnd = Math.max(endD.getTime() + HOUR, axisStart + 2 * HOUR);
+  axisEnd = Math.min(axisEnd, axisStart + 16 * HOUR); // cap the strip at 16 hours
+  tlAxis = { start: axisStart, end: axisEnd };
   let out = '';
-  for (let t = first; t < end; t += SLOT) {
+  for (let t = axisStart; t < axisEnd; t += SLOT) {
     const mid = t + SLOT / 2;
-    let cls = 'free';
-    if (sess.some(s => mid >= s[0] && mid < s[1])) cls = 'work';
-    else if (mid < liveEdge) cls = 'brk';
+    let cls = '';
+    if (mid >= first) {
+      if (sess.some(s => mid >= s[0] && mid < s[1])) cls = 'work';
+      else if (mid < liveEdge) cls = 'brk';
+      else if (!isPastDay && leaveMs && mid < leaveMs) cls = 'free';
+    }
     if (!isPastDay && now.getTime() >= t && now.getTime() < t + SLOT) cls = 'now';
-    out += '<i class="' + cls + '"></i>';
+    out += '<i' + (cls ? ' class="' + cls + '"' : '') + '></i>';
   }
   $('defragStrip').innerHTML = out;
+  let axis = '';
+  for (let t = axisStart; t <= axisEnd; t += HOUR) {
+    const h = new Date(t).getHours(), h12 = h % 12 || 12;
+    const label = (t === axisStart || t + HOUR > axisEnd || h12 === 12) ? h12 + ' ' + (h >= 12 ? 'PM' : 'AM') : String(h12);
+    axis += '<span style="left:' + ((t - axisStart) / (axisEnd - axisStart) * 100) + '%">' + label + '</span>';
+  }
+  $('tlAxis').innerHTML = axis;
+}
+
+// In / Now / Leave labels and lines; cheap enough to run on every 1s tick
+function updateTimelineMarkers(now, firstMs, isPastDay, leaveMs) {
+  if (!tlAxis) return;
+  const short = t => fmtClock(new Date(t)).replace(/\s?[AP]M$/, '');
+  const W = 12; // rough label width as % of the strip, to keep labels from overlapping
+  const half = W / 2;
+  const inP = tlPct(firstMs), nowP = tlPct(now.getTime()), lvP = tlPct(leaveMs);
+  const showNow = !isPastDay, showLeave = !!leaveMs;
+  let nowC = Math.max(half, Math.min(100 - half, nowP));
+  if (nowC - half < inP + W) nowC = inP + W + half;
+  let lvC = Math.max(half, Math.min(100 - half, lvP));
+  if (showNow && lvC - nowC < W) lvC = nowC + W;
+  if (lvC > 100 - half) { lvC = 100 - half; if (showNow) nowC = Math.min(nowC, lvC - W); }
+  $('tlIn').textContent = 'In ' + short(firstMs);
+  $('tlIn').style.left = inP + '%';
+  $('tlNow').textContent = 'Now ' + short(now.getTime());
+  $('tlNow').style.left = nowC + '%';
+  $('tlNow').style.display = showNow ? '' : 'none';
+  $('tlLeave').textContent = 'Leave ' + short(leaveMs);
+  $('tlLeave').style.left = lvC + '%';
+  $('tlLeave').style.display = showLeave ? '' : 'none';
+  $('tlLineNow').style.left = nowP + '%';
+  $('tlLineNow').style.display = showNow ? 'block' : 'none';
+  $('tlLineLeave').style.left = lvP + '%';
+  $('tlLineLeave').style.display = showLeave ? 'block' : 'none';
 }
 
 // Reset the ambient indicators when no punch data is on screen
@@ -3293,6 +3446,12 @@ function ambientIdle() {
   $('presenceDot').className = 'pdot off';
   $('presenceText').textContent = 'Not punched in yet';
   $('defragStrip').innerHTML = '';
+  $('tlAxis').innerHTML = '';
+  tlAxis = null;
+  $('sbStatus').textContent = 'Ready';
+  $('sbWorked').textContent = '';
+  $('sbLeave').textContent = '';
+  document.querySelector('.title-text').textContent = appTitleText();
   lastDefragSig = null;
 }
 
@@ -3313,10 +3472,20 @@ function render() {
   let workedMs = 0;
   let isWorking = false;
   const rows = [];
+  let breakCount = 0;
 
   sorted.forEach((s, i) => {
     const start = new Date(s.punch_in);
     let end, outCell;
+    if (i > 0 && sorted[i - 1].punch_out) {
+      const prevOut = new Date(sorted[i - 1].punch_out);
+      const gap = start - prevOut;
+      if (gap > 0) {
+        breakCount++;
+        rows.push('<tr class="brk-row"><td></td><td colspan="2">Break · ' + fmtClock(prevOut) +
+          ' – ' + fmtClock(start) + '</td><td>' + fmtDur(gap) + '</td></tr>');
+      }
+    }
     if (s.punch_out) {
       end = new Date(s.punch_out);
       outCell = fmtClock(end);
@@ -3326,12 +3495,12 @@ function render() {
     } else {
       end = now;
       isWorking = true;
-      outCell = '<span class="ongoing">Working...</span>';
+      outCell = '<span class="ongoing">' + '● In progress</span>';
     }
     const dur = Math.max(0, end - start);
     workedMs += dur;
     rows.push(
-      '<tr><td>' + (i + 1) + '</td>' +
+      '<tr' + (!s.punch_out && !isPastDay ? ' class="cur"' : '') + '><td>' + (i + 1) + '</td>' +
       '<td>' + fmtClock(start) + '</td>' +
       '<td>' + outCell + '</td>' +
       '<td>' + fmtDur(dur) + '</td></tr>'
@@ -3351,6 +3520,12 @@ function render() {
   // Status + leave time
   const badge = $('statusBadge');
   const leaveTime = $('leaveTime');
+  const leaveSub = $('leaveSub');
+  leaveSub.className = 'leave-sub';
+  leaveSub.textContent = '';
+  let leaveMs = 0;        // expected leave time (0 = nothing to show on the timeline)
+  let leavePane = 'Leave -';
+  let titleSuffix = '';
   if (isPastDay) {
     badge.textContent = 'Past day';
     badge.className = 'status-badge status-out';
@@ -3364,34 +3539,50 @@ function render() {
       leaveTime.className = 'leave-time';
     }
   } else if (remainingMs <= 0) {
-    badge.textContent = 'Target complete';
+    badge.textContent = 'Done';
     badge.className = 'status-badge status-done';
-    $('leaveLabel').textContent = 'You can leave now! Overtime:';
-    leaveTime.textContent = fmtDur(-remainingMs);
+    $('leaveLabel').textContent = 'You can leave now';
+    leaveTime.textContent = 'Done \u2713';
     leaveTime.className = 'leave-time done';
+    leaveSub.textContent = '+' + fmtDur(-remainingMs) + ' overtime';
+    leavePane = 'Leave now';
+    titleSuffix = ' \u2014 You can leave now';
   } else if (isWorking) {
     badge.textContent = 'Working';
     badge.className = 'status-badge status-working';
     $('leaveLabel').textContent = 'You can leave at';
-    leaveTime.textContent = fmtClock(new Date(now.getTime() + remainingMs));
+    leaveMs = now.getTime() + remainingMs;
+    leaveTime.textContent = fmtClock(new Date(leaveMs));
     leaveTime.className = 'leave-time';
+    leaveSub.textContent = 'in ' + fmtDur(remainingMs);
+    leavePane = 'Leave ' + leaveTime.textContent;
+    titleSuffix = ' \u2014 Leave at ' + leaveTime.textContent;
   } else {
-    badge.textContent = 'Punched out';
+    badge.textContent = 'On break';
     badge.className = 'status-badge status-out';
     $('leaveLabel').textContent = 'If you punch in now, you can leave at';
-    leaveTime.textContent = fmtClock(new Date(now.getTime() + remainingMs));
+    leaveMs = now.getTime() + remainingMs;
+    leaveTime.textContent = fmtClock(new Date(leaveMs));
     leaveTime.className = 'leave-time';
+    leaveSub.textContent = 'paused';
+    leaveSub.className = 'leave-sub paused';
+    leavePane = 'Leave ' + leaveTime.textContent;
+    titleSuffix = ' \u2014 Leave at ' + leaveTime.textContent;
   }
 
-  $('statusStrip').textContent = badge.textContent + '  |  Worked: ' + fmtDur(workedMs);
+  $('sbStatus').textContent = '\u25CF ' + badge.textContent;
+  $('sbWorked').textContent = 'Worked ' + fmtDur(workedMs);
+  $('sbLeave').textContent = leavePane;
 
   $('workedVal').textContent = fmtDur(workedMs);
   $('remainingVal').textContent = remainingMs > 0 ? fmtDur(remainingMs) : 'Done';
   $('breakVal').textContent = fmtDur(breakMs);
+  $('breakCount').textContent = breakCount ? '(' + breakCount + (breakCount === 1 ? ' break)' : ' breaks)') : '';
+  $('targetVal').textContent = fmtDurShort(targetMs);
 
   const pct = Math.min(100, (workedMs / targetMs) * 100);
   $('progressFill').style.width = pct + '%';
-  $('progressText').textContent = pct.toFixed(1) + '% of ' + fmtDur(targetMs);
+  $('progressText').textContent = Math.round(pct) + '%';
 
   // Taskbar chip: worked / target at a glance, leave time on hover
   const chip = $('trayChip');
@@ -3419,11 +3610,12 @@ function render() {
   }
 
   // Defrag strip only needs a rebuild once a minute (or when sessions change)
-  const defragSig = Math.floor(now.getTime() / 60000) + '|' + sorted.length + '|' + targetMs + '|' + (isPastDay ? 1 : 0);
+  const defragSig = Math.floor(now.getTime() / 60000) + '|' + sorted.length + '|' + targetMs + '|' + (isPastDay ? 1 : 0) + '|' + (leaveMs ? 1 : 0);
   if (defragSig !== lastDefragSig) {
     lastDefragSig = defragSig;
-    renderDefrag(sorted, now, isPastDay, targetMs, breakMs);
+    renderDefrag(sorted, now, isPastDay, targetMs, leaveMs);
   }
+  updateTimelineMarkers(now, new Date(sorted[0].punch_in).getTime(), isPastDay, leaveMs);
 
   $('sessionsBody').innerHTML = rows.join('');
 
@@ -3459,7 +3651,7 @@ function render() {
     }
   } else {
     winEl.style.filter = '';
-    document.querySelector('.title-text').textContent = appTitleText();
+    document.querySelector('.title-text').textContent = appTitleText() + titleSuffix;
   }
 
   // Random glitch effect after 6h worked
@@ -5524,7 +5716,8 @@ function renderXP() {
   while (lvl + 1 < LEVELS.length && xp >= LEVELS[lvl + 1][1]) lvl++;
   const next = LEVELS[lvl + 1];
   const stars = prestige > 0 ? ' \u2B50'.repeat(Math.min(3, prestige)) : '';
-  $('xpLevel').textContent = 'Level ' + (lvl + 1) + ' \u2014 ' + LEVELS[lvl][0] + ' (' + xp + ' XP)' + stars;
+  $('xpLevel').innerHTML = '<b>Level ' + (lvl + 1) + '</b> \u00b7 ' + LEVELS[lvl][0] + stars;
+  $('xpPoints').textContent = xp.toLocaleString() + ' XP';
   $('xpFill').style.width = next
     ? Math.min(100, (xp - LEVELS[lvl][1]) / (next[1] - LEVELS[lvl][1]) * 100) + '%'
     : '100%';
@@ -6685,10 +6878,14 @@ function renderWeek() {
       count++;
     }
   }
+  const weekTarget = total - net; // sum of the recorded days' targets, so worked - target = balance
   $('wTotalVal').textContent = count ? fmtDurShort(total) : '-';
+  $('wTargetTxt').textContent = count ? ' of ' + fmtDurShort(weekTarget) : '';
+  $('weekFill').style.width = count && weekTarget > 0 ? Math.min(100, total / weekTarget * 100) + '%' : '0%';
   const netEl = $('wNetVal');
-  netEl.textContent = count ? (net >= 0 ? '+' : '') + fmtDurShort(net) : '-';
-  netEl.className = 'value ' + (count ? (net >= 0 ? 'pos' : 'neg') : '');
+  netEl.textContent = count ? (net >= 0 ? '+' : '') + fmtDurShort(net) + (net >= 0 ? ' ahead' : ' behind') : '-';
+  netEl.className = 'wk-net ' + (count ? (net >= 0 ? 'pos' : 'neg') : '');
+  $('sbWeek').textContent = count ? 'Week ' + (net >= 0 ? '+' : '') + fmtDurShort(net) : 'Week -';
 
   // Perfect Week: Mon-Fri all on target
   let perfect = 0;
