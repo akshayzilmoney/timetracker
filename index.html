@@ -1522,6 +1522,8 @@
   #dashboard .page .btn.sm.icon { width: 40px; padding: 0; }
   #dashboard .page .sess { display: flex; flex-direction: column; gap: 10px; }
   #dashboard .page .sess-list { display: flex; flex-direction: column; gap: 8px; }
+  #dashboard .page #whSessions { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  #dashboard .page #whSessions .sess-list, #dashboard .page #whSessions .detail-actions { align-self: stretch; }
   #dashboard .page .sess-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
   #dashboard .page .sess-row input[type=time] {
     width: 100%; min-width: 0; height: 36px; padding: 0 8px; font: inherit; font-family: var(--mono); font-size: 13px;
@@ -1535,7 +1537,7 @@
   #dashboard .page .sess-del:hover { color: var(--under); background: var(--raised); }
   #dashboard .page .sess-note { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.45; }
   #dashboard .page .sess-msg { min-height: 16px; font-size: 12px; color: var(--under); }
-  #dashboard .page .sess-ro { font-family: var(--mono); font-size: 13px; color: var(--text-2); }
+  #dashboard .page .sess-ro { display: flex; justify-content: space-between; gap: 12px; font-family: var(--mono); font-size: 13px; color: var(--text-2); }
   #dashboard .page .lab-short { display: none; }
   @media (max-width: 760px) {
     #dashboard .page .lab-full { display: none; }
@@ -7272,6 +7274,7 @@ const WH_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July
 function openDashboard() {
   calMonth = new Date();
   whSel = dateKey(new Date());
+  whEditing = false;
   whQuery = '';
   $('dashSearch').value = '';
   buildDashboard();
@@ -7402,6 +7405,7 @@ function renderCalendar() {
   $('whMonthMeta').textContent = whFmt(monthTotal) + ' · ' + monthDays + ' day' + (monthDays === 1 ? '' : 's');
   $('calGrid').querySelectorAll('.day').forEach(b => b.addEventListener('click', () => {
     whSel = b.dataset.k;
+    whEditing = true;
     renderCalendar();
     renderWhDetail();
   }));
@@ -7417,6 +7421,7 @@ $('calNext').addEventListener('click', () => {
 $('calToday').addEventListener('click', () => {
   calMonth = new Date();
   whSel = dateKey(new Date());
+  whEditing = false;
   renderCalendar();
   renderWhDetail();
 });
@@ -7427,7 +7432,7 @@ $('dashSearch').addEventListener('input', e => {
   const iso = q.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);
   if (iso) {
     calMonth = new Date(+iso[1], +iso[2] - 1, 1);
-    if (iso[3]) { whSel = iso[0]; renderWhDetail(); }
+    if (iso[3]) { whSel = iso[0]; whEditing = false; renderWhDetail(); }
   } else if (mi >= 0) {
     calMonth = new Date(calMonth.getFullYear(), mi, 1);
   }
@@ -7487,6 +7492,7 @@ function renderWhDetail() {
 }
 // Inline per-session editor for the selected day (past days only: today is tracked live from ATS)
 let whOrig = [];
+let whEditing = false; // clicking a day opens its sessions for editing; saving closes the editor again
 function whRowHtml(origIdx, sess) {
   const a = sess ? new Date(sess[0]) : null;
   const b = sess && sess[1] ? new Date(sess[1]) : null;
@@ -7510,22 +7516,36 @@ function renderWhSessions() {
   }
   if (k === todayKey) {
     const ss = (rec && rec.sessions) || [];
-    box.innerHTML = (ss.length ? '<div class="sess-list">' + ss.map(x => {
-      return '<div class="sess-ro">' + fmtClock(new Date(x[0])) + ' \u2192 ' + (x[1] ? fmtClock(new Date(x[1])) : 'now') + '</div>';
-    }).join('') + '</div>' : '') +
+    box.innerHTML = (ss.length ? whRoList(ss, true) : '') +
       '<p class="sess-note">Today is tracked live from ATS, so it can\u2019t be edited until the day is over. ' +
       'Missed a punch yesterday?</p><button class="btn sm" id="whYest">Edit yesterday</button>';
     return;
   }
   whOrig = ((rec && rec.sessions) || []).map(x => x.slice());
+  if (!whEditing) {
+    box.innerHTML = (whOrig.length ? whRoList(whOrig) : '<p class="sess-note">No punches recorded for this day.</p>') +
+      '<button class="btn sm" id="whEditBtn">' + (whOrig.length ? 'Edit sessions' : 'Add sessions') + '</button>';
+    return;
+  }
   box.innerHTML = (whOrig.length ? '' : '<p class="sess-note">No punches recorded for this day. Add the sessions you worked.</p>') +
     '<div class="sess-list">' + whOrig.map((x, i) => whRowHtml(i, x)).join('') + '</div>' +
     '<div class="detail-actions"><button class="btn sm ds-add">+ Add session</button>' +
-    '<button class="btn sm ds-save">Save sessions</button></div><div class="sess-msg" id="whSessMsg"></div>';
+    '<button class="btn sm ds-save">Save sessions</button></div>' +
+    '<button class="btn sm" id="whCancelBtn">Cancel</button><div class="sess-msg" id="whSessMsg"></div>';
 }
-dsWire($('whSessions'), () => ({ k: whSel, orig: whOrig, msg: $('whSessMsg'), row: whRowHtml }));
+function whRoList(ss, liveNow) {
+  return '<div class="sess-list">' + ss.map(x => {
+    const a = new Date(x[0]), b = x[1] ? new Date(x[1]) : null;
+    return '<div class="sess-ro"><span>' + fmtClock(a) + ' \u2192 ' + (b ? fmtClock(b) : (liveNow ? 'now' : '\u2014')) +
+      '</span><span class="sess-dur">' + (b ? fmtDurShort(b - a) : '') + '</span></div>';
+  }).join('') + '</div>';
+}
+dsWire($('whSessions'), () => ({ k: whSel, orig: whOrig, msg: $('whSessMsg'), row: whRowHtml, onSaved: () => { whEditing = false; } }));
 $('whSessions').addEventListener('click', e => {
+  if (e.target.id === 'whEditBtn') { whEditing = true; renderWhSessions(); return; }
+  if (e.target.id === 'whCancelBtn') { whEditing = false; renderWhSessions(); return; }
   if (e.target.id !== 'whYest') return;
+  whEditing = true;
   const y = new Date();
   y.setDate(y.getDate() - 1);
   whSel = dateKey(y);
@@ -7678,7 +7698,7 @@ function dsRenumber(root) {
   root.querySelectorAll('tbody tr').forEach((tr, i) => { tr.firstElementChild.textContent = i + 1; });
 }
 // Save the session rows found in root as day k. orig = the sessions the rows were built from.
-function dsSave(k, root, msgEl, orig) {
+function dsSave(k, root, msgEl, orig, onSaved) {
   const msg = t => { msgEl.textContent = t; };
   const y = +k.slice(0, 4), mo = +k.slice(5, 7) - 1, d = +k.slice(8);
   const atTime = v => new Date(y, mo, d, +v.slice(0, 2), +v.slice(3, 5), 0, 0);
@@ -7718,6 +7738,7 @@ function dsSave(k, root, msgEl, orig) {
   rec.breaks = breaks;
   rec.sessionsEdited = true;
   lsSet(HISTORY_KEY, JSON.stringify(history));
+  if (onSaved) onSaved();
   refreshHistoryViews(k);
   showBalloon('\u2705 Sessions saved for ' + k + '.');
 }
@@ -7733,7 +7754,7 @@ function dsWire(root, ctx) {
       dsRenumber(root);
     } else if (e.target.closest('.ds-save')) {
       const c = ctx();
-      dsSave(c.k, root, c.msg, c.orig);
+      dsSave(c.k, root, c.msg, c.orig, c.onSaved);
     }
   });
 }
